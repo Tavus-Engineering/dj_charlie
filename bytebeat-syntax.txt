@@ -1,0 +1,99 @@
+DJ Charlie — Bytebeat Syntax & Player URL Reference
+====================================================
+
+WHAT IS BYTEBEAT
+----------------
+Bytebeat is music from a single expression f(t), evaluated once per audio
+sample for an integer counter `t` that increments every sample. The result is
+masked to 8 bits (& 255) and played as unsigned 8-bit PCM (128 = silence).
+At the classic 8000 Hz rate, t advances 8000 per second. The overflow/aliasing
+IS the sound — that wrapping is a feature, not a bug.
+
+THE THREE OUTPUT MODES
+----------------------
+bytebeat        expression -> integer; low 8 bits -> unsigned (0..255).
+                mapped to audio as ((v & 255) - 128) / 128.
+signedbytebeat  same byte interpreted signed (-128..127):
+                (((v + 128) & 255) - 128) / 128.
+floatbeat       expression already returns -1..1 (use sin/cos/tan etc.);
+                output is clamped, NOT masked.
+
+EXPRESSION VARIABLES & HELPERS (in this player)
+-----------------------------------------------
+t                          the per-sample counter (integer, floored).
+sin cos tan atan           Math trig (handy for floatbeat).
+floor ceil abs sqrt pow    Math helpers.
+log log2 exp min max       Math helpers.
+int  = Math.floor          shorthand.
+PI E                       constants.
+Standard JS operators:  + - * / %  & | ^ ~ << >> >>>  ?:  etc.
+
+PLAYER URL SYNTAX  (player.html)
+--------------------------------
+The self-hosted player loads a beat directly from query params:
+
+  player.html?expr=<expression>&rate=<hz>&mode=<mode>&play=1
+
+  expr   URL-encoded bytebeat expression in terms of t   (required)
+  rate   bytebeat sample rate in Hz (default 8000)
+  mode   bytebeat | signedbytebeat | floatbeat (default bytebeat)
+  play   1 to surface the tap-to-start overlay on load
+
+Examples (encode the expr when sharing as a link):
+  player.html?expr=t*(t>>5%7Ct>>8)&rate=8000&mode=bytebeat
+  player.html?expr=sin(t/40)*0.6&mode=floatbeat
+
+POSTMESSAGE CONTROL  (parent -> player iframe)
+----------------------------------------------
+The booth (index.html) drives the player live without reloading audio:
+
+  { type:'set',    expr, rate, mode, play }   change beat (any field optional)
+  { type:'play' }                             start audio
+  { type:'stop' }                             stop audio
+  { type:'volume', value }                    0..1
+  { type:'reset' }                            rewind the t counter
+
+Player -> parent:
+  { type:'ready' }
+  { type:'state', playing, suspended, expr, rate, mode }
+  { type:'error', message }
+
+NOTE ON AUTOPLAY: browsers block audio until a user gesture. The player shows a
+one-time "tap to enable audio" overlay; after that, postMessage play/stop/set
+work freely.
+
+THE CRATE (built-in presets — verified classics)
+-------------------------------------------------
+  viznut      t*(t>>5|t>>8)                            iconic rising sawtooth
+  arps        t*(((t>>12)|(t>>8))&(63&(t>>4)))         viznut's first; arpeggiated
+  sierpinski  t&t>>8                                   sparse glitchy harmonic
+  crowd       (t>>7|t|t>>6)*10+4*(t&t>>13|t>>6)        busy musical chiptune
+  harmony     (t*5&t>>7)|(t*3&t>>10)                   pleasant sawtooth harmony
+  melody42    t*(t>>11&t>>8&123&t>>3)                  dense textured layering
+  nested      t*((t>>9|t>>13)&25&t>>6)                 rhythmic + melodic
+  fractal     (t^t>>8)*(t>>16&t)                       evolving fractal melody
+  waiver      (((t/91)&t)^((t/90)&t))-1                slow drifting beat
+  scale       (t>>8&t>>16)*t>>4                        rising scale (best @ 32000)
+  sine        sin(t/40)*0.6                            smooth floatbeat tone
+
+DJ CHARLIE TOOL CALLS (LLM function-calling -> player)
+------------------------------------------------------
+  set_beat     { expr, sample_rate?, mode? }   compose & play any beat
+  load_preset  { name }                        play a crate preset by name
+  stop_beat    { }                             stop
+  set_volume   { level }                       0..100
+
+EXTERNAL PLAYER URL FORMATS (for reference / importing songs)
+-------------------------------------------------------------
+greggman html5bytebeat (greggman.github.io/html5bytebeat):
+  hash  #t=<0..2>&e=<0..3>&s=<rate>&bb=<hex>
+  t: 0=bytebeat 1=floatbeat 2=signed.  e: 0=infix 1=postfix 2=glitch 3=function.
+  bb = code LZMA-compressed then hex-encoded (LZMA header signature 5d00000100...).
+
+Dollchan bytebeat-composer (dollchan.net/bytebeat):
+  hash  #4<base64>  where bytes = [mode(1B)][sampleRate float32 LE (4B)][raw-DEFLATE code]
+  ('=' padding stripped). Legacy: #v3b64<base64> = raw-DEFLATE of code or JSON.
+
+wurstcaptures Audio Toy (wurstcaptures.untergrund.net/music):
+  query  ?oneliner=<urlencoded code>&rate=<n>   (+oneliner2 for stereo). No compression.
+  Easiest external format to construct/parse by hand.

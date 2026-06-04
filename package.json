@@ -1,0 +1,10 @@
+{
+  "name": "dj-charlie",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A live bytebeat DJ — a Tavus replica that composes and morphs one-line algorithmic music in real time.",
+  "scripts": {
+    "start": "npx --yes serve@14 -l 5173 .",
+    "dev": "npx --yes serve@14 -l 5173 ."
+  }
+}

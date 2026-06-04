@@ -1,0 +1,1531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DJ Charlie — Live Bytebeat</title>
+  <script crossorigin src="https://unpkg.com/@daily-co/daily-js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #05060d;
+      --panel:    #0c1020;
+      --panel-2:  #0a0e1c;
+      --line:     #182039;
+      --line-2:   #25305a;
+      --teal:     #38e8c8;
+      --teal-dim: #1d6b5c;
+      --pink:     #ff5db1;
+      --text:     #dcecf5;
+      --muted:    #6f8aa0;
+      --dim:      #3a4866;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .mono { font-family: 'SF Mono', 'Fira Code', ui-monospace, Consolas, monospace; }
+
+    /* ── Header ── */
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 20px; height: 50px;
+      background: linear-gradient(90deg, #0a0e1c, #0c1020);
+      border-bottom: 1px solid var(--line);
+      flex-shrink: 0; z-index: 10;
+    }
+    .header-left { display: flex; align-items: center; gap: 11px; }
+    .logo {
+      width: 28px; height: 28px; border-radius: 7px;
+      background: linear-gradient(135deg, var(--teal), #2b8fff);
+      display: flex; align-items: center; justify-content: center; font-size: 15px;
+      box-shadow: 0 0 16px rgba(56,232,200,0.35);
+    }
+    header h1 { font-size: 15px; font-weight: 700; letter-spacing: 0.4px; color: #eafdff; }
+    header h1 span { color: var(--teal); }
+    #header-status { font-size: 12px; color: var(--muted); }
+
+    /* ── Setup ── */
+    #setup { flex: 1; display: flex; align-items: center; justify-content: center; padding: 20px; }
+    .setup-card {
+      background: var(--panel); border: 1px solid var(--line);
+      border-radius: 16px; padding: 40px 38px; width: 440px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    }
+    .setup-card h2 { font-size: 23px; font-weight: 800; color: #f3fbff; margin-bottom: 6px; }
+    .setup-card p.sub { font-size: 13.5px; color: var(--muted); line-height: 1.55; margin-bottom: 28px; }
+    .field { margin-bottom: 16px; }
+    .field label {
+      display: block; font-size: 11px; font-weight: 600; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 7px;
+    }
+    .field label .opt { font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--dim); }
+    .field input {
+      width: 100%; padding: 10px 13px; background: var(--bg);
+      border: 1px solid var(--line); border-radius: 9px; color: var(--text);
+      font-size: 14px; outline: none; transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .field input:focus { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(56,232,200,0.14); }
+    .row2 { display: flex; gap: 12px; }
+    .row2 .field { flex: 1; }
+
+    .btn-primary {
+      width: 100%; padding: 13px; margin-top: 6px;
+      background: linear-gradient(135deg, var(--teal), #20c2a4);
+      color: #04221d; border: none; border-radius: 9px;
+      font-size: 14.5px; font-weight: 800; cursor: pointer;
+      transition: filter 0.15s, transform 0.1s;
+    }
+    .btn-primary:hover:not(:disabled) { filter: brightness(1.08); }
+    .btn-primary:active:not(:disabled) { transform: scale(0.99); }
+    .btn-primary:disabled { background: #233; color: #567; cursor: not-allowed; }
+
+    .btn-ghost {
+      background: transparent; border: 1px solid var(--line-2); color: var(--muted);
+      padding: 7px 12px; border-radius: 8px; font-size: 12px; cursor: pointer;
+      transition: all 0.15s; white-space: nowrap;
+    }
+    .btn-ghost:hover { color: var(--teal); border-color: var(--teal-dim); }
+
+    .inline-create { display: flex; gap: 8px; align-items: center; }
+    .inline-create input { flex: 1; }
+
+    #setup-msg {
+      margin-top: 14px; padding: 10px 13px; border-radius: 8px; font-size: 13px; display: none;
+    }
+    #setup-msg.err { background: rgba(255,80,80,0.1); border: 1px solid rgba(255,80,80,0.3); color: #ffb3b3; }
+    #setup-msg.ok  { background: rgba(56,232,200,0.1); border: 1px solid var(--teal-dim); color: var(--teal); }
+
+    /* ── Session ── */
+    #session { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    .session-body { flex: 1; display: flex; overflow: hidden; position: relative; }
+
+    /* Player iframe fills the stage */
+    #player-wrap { flex: 1; position: relative; min-width: 0; background: #05060d; }
+    #player-frame { width: 100%; height: 100%; border: none; display: block; }
+
+    /* ── Replica video — floating bottom-left ── */
+    #video-panel {
+      position: fixed; bottom: 92px; left: 16px; width: 188px;
+      display: flex; flex-direction: column; background: var(--panel);
+      border: 1px solid var(--line-2); border-radius: 12px; overflow: hidden;
+      z-index: 30; box-shadow: 0 6px 28px rgba(0,0,0,0.6);
+    }
+    #replica-video-container { aspect-ratio: 9/16; position: relative; background: #000; cursor: grab; }
+    #replica-video-container:active { cursor: grabbing; }
+    #replica-video { width: 100%; height: 100%; object-fit: cover; object-position: top center; display: none; }
+    #replica-placeholder {
+      position: absolute; inset: 0; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 8px; color: var(--dim);
+    }
+    .avatar-ring {
+      width: 38px; height: 38px; border-radius: 50%; background: var(--line);
+      border: 2px solid var(--line-2); display: flex; align-items: center; justify-content: center; font-size: 17px;
+    }
+    #replica-placeholder span { font-size: 11px; color: var(--muted); }
+
+    #mic-meter {
+      display: flex; align-items: flex-end; justify-content: center; gap: 2px;
+      height: 20px; padding: 4px 8px 2px; background: var(--panel-2); border-top: 1px solid var(--line);
+    }
+    .mic-bar { width: 3px; border-radius: 2px; background: var(--teal); height: 3px; opacity: 0.2; transition: height 0.08s, opacity 0.08s; }
+    #mic-meter.muted .mic-bar { background: var(--dim); opacity: 0.15; }
+
+    .video-controls { padding: 5px 6px; display: flex; gap: 4px; background: var(--panel-2); border-top: 1px solid var(--line); }
+    .ctrl-btn {
+      flex: 1; padding: 5px 4px; border: 1px solid var(--line); border-radius: 6px;
+      background: #141a30; color: var(--muted); font-size: 10px; font-weight: 600;
+      cursor: pointer; transition: all 0.15s; white-space: nowrap;
+    }
+    .ctrl-btn:hover { background: #1b2444; color: var(--text); }
+    .ctrl-btn.muted { background: rgba(255,80,80,0.1); border-color: rgba(255,80,80,0.3); color: #ff8e8e; }
+    .ctrl-btn.end { background: rgba(255,80,80,0.12); border-color: rgba(255,80,80,0.25); color: #ff8e8e; }
+
+    /* ── Control deck (bottom bar) ── */
+    #deck {
+      flex-shrink: 0; background: linear-gradient(180deg, #0a0e1c, #070a16);
+      border-top: 1px solid var(--line); padding: 10px 16px 12px;
+      display: flex; flex-direction: column; gap: 9px;
+      /* Sit above the floating panels (z-30) so deck controls stay clickable. */
+      position: relative; z-index: 40;
+    }
+    .deck-row { display: flex; align-items: center; gap: 9px; }
+    #expr-input {
+      flex: 1; padding: 9px 12px; background: var(--bg); border: 1px solid var(--line);
+      border-radius: 8px; color: var(--teal); font-size: 13.5px; outline: none;
+      font-family: 'SF Mono','Fira Code',ui-monospace,monospace;
+    }
+    #expr-input:focus { border-color: var(--teal); }
+    .deck-select {
+      padding: 9px 9px; background: var(--bg); border: 1px solid var(--line);
+      border-radius: 8px; color: var(--text); font-size: 12px; outline: none; cursor: pointer;
+    }
+    .deck-btn {
+      padding: 9px 16px; border-radius: 8px; border: 1px solid var(--line-2);
+      background: #141a30; color: var(--text); font-size: 13px; font-weight: 700;
+      cursor: pointer; transition: all 0.13s; white-space: nowrap;
+    }
+    .deck-btn:hover { border-color: var(--teal-dim); }
+    .deck-btn.go { background: linear-gradient(135deg, var(--teal), #20c2a4); color: #04221d; border: none; }
+    .deck-btn.stop { background: rgba(255,80,80,0.12); border-color: rgba(255,80,80,0.3); color: #ff9e9e; }
+
+    #vol-wrap { display: flex; align-items: center; gap: 7px; min-width: 150px; }
+    #vol-wrap span { font-size: 11px; color: var(--muted); }
+    #vol { width: 110px; accent-color: var(--teal); }
+
+    .preset-row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+    .preset-row .lbl { font-size: 10px; color: var(--dim); text-transform: uppercase; letter-spacing: 1px; margin-right: 2px; }
+    .chip {
+      padding: 5px 11px; border-radius: 999px; border: 1px solid var(--line);
+      background: var(--panel-2); color: var(--muted); font-size: 11.5px; cursor: pointer;
+      transition: all 0.13s;
+    }
+    .chip:hover { color: var(--teal); border-color: var(--teal-dim); }
+    .chip.active { color: #04221d; background: var(--teal); border-color: var(--teal); font-weight: 700; }
+
+    /* ── Status bar ── */
+    #status-bar {
+      height: 28px; padding: 0 16px; background: var(--bg); border-top: 1px solid var(--line);
+      display: flex; align-items: center; gap: 18px; flex-shrink: 0;
+      position: relative; z-index: 40;
+    }
+    .sb-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--dim); }
+    .sb-item .val { color: var(--muted); }
+    .sb-item .hl { color: var(--teal); font-family: 'SF Mono','Fira Code',monospace; }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--dim); transition: background 0.3s; }
+    .status-dot.active { background: var(--teal); }
+    .status-dot.loading { background: #f5b942; animation: blink 0.9s ease-in-out infinite; }
+    .status-dot.error { background: #ff5b5b; }
+    @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+
+    /* ── Tool-call console ── */
+    #tool-console {
+      position: fixed; bottom: 92px; right: 16px; width: 372px; max-height: 340px;
+      display: none; flex-direction: column;
+      background: rgba(7,10,22,0.97); border: 1px solid var(--line-2);
+      border-radius: 12px; overflow: hidden; z-index: 30;
+      box-shadow: 0 8px 36px rgba(0,0,0,0.72);
+      font-family: 'SF Mono','Fira Code',ui-monospace,monospace;
+    }
+    #tool-console.show { display: flex; }
+    .tc-header {
+      display: flex; align-items: center; gap: 8px; padding: 8px 11px;
+      background: linear-gradient(90deg, #0b1326, #0c1020); border-bottom: 1px solid var(--line);
+      cursor: grab; flex-shrink: 0;
+    }
+    .tc-header:active { cursor: grabbing; }
+    .tc-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--teal); box-shadow: 0 0 8px var(--teal); }
+    .tc-title { font-size: 11px; font-weight: 700; letter-spacing: 1px; color: var(--teal); text-transform: uppercase; flex: 1; }
+    .tc-count { font-size: 10px; color: var(--muted); background: var(--panel-2); border: 1px solid var(--line); padding: 1px 8px; border-radius: 999px; }
+    .tc-btn { background: none; border: 1px solid var(--line-2); color: var(--muted); font-size: 10px; padding: 2px 8px; border-radius: 5px; cursor: pointer; font-family: inherit; }
+    .tc-btn:hover { color: var(--teal); border-color: var(--teal-dim); }
+    #tool-log { padding: 8px 10px; overflow-y: auto; flex: 1; }
+    .tc-empty { color: var(--dim); font-size: 11px; text-align: center; padding: 26px 10px; line-height: 1.5; }
+    .tc-entry { margin-bottom: 9px; line-height: 1.5; animation: tcIn 0.18s ease; }
+    @keyframes tcIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+    .tc-row1 { display: flex; align-items: baseline; gap: 7px; }
+    .tc-time { font-size: 10px; color: var(--dim); flex-shrink: 0; }
+    .tc-src { font-size: 11px; flex-shrink: 0; }
+    .tc-name { font-size: 12.5px; font-weight: 700; }
+    .tc-name.set_beat    { color: var(--teal); }
+    .tc-name.load_preset { color: #8fd0ff; }
+    .tc-name.stop_beat   { color: #ff9e9e; }
+    .tc-name.set_volume  { color: #ffd27d; }
+    .tc-name.unknown     { color: var(--muted); }
+    .tc-args { font-size: 11px; color: var(--muted); word-break: break-all; margin-top: 2px; padding-left: 19px; }
+    .tc-args .k { color: #6f8aa0; }
+    .tc-args .v { color: #d3ecf6; }
+    .tc-name.save_beat     { color: #c9b6ff; }
+    .tc-name.play_sequence { color: #7dffa8; }
+    .tc-name.stop_sequence { color: #ff9e9e; }
+
+    /* ── Saved-beat chips ── */
+    .chip.saved { border-color: #3a3060; color: #c9b6ff; position: relative; padding-right: 24px; }
+    .chip.saved:hover { border-color: #6c5bd0; color: #e3d9ff; }
+    .chip .x { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); font-size: 10px; color: var(--dim); }
+    .chip.saved:hover .x { color: #ff8e8e; }
+
+    /* ── Sequencer ── */
+    .seq-row { gap: 8px; flex-wrap: wrap; }
+    .seq-row .lbl { font-size: 10px; color: var(--dim); text-transform: uppercase; letter-spacing: 1px; }
+    .seq-steps {
+      flex: 1; min-width: 180px; display: flex; gap: 6px; overflow-x: auto;
+      padding: 4px; background: var(--bg); border: 1px solid var(--line);
+      border-radius: 8px; min-height: 40px; align-items: center;
+    }
+    .seq-empty { font-size: 11px; color: var(--dim); padding: 0 6px; white-space: nowrap; }
+    .seq-tile {
+      flex-shrink: 0; display: flex; flex-direction: column; gap: 1px; padding: 4px 18px 4px 8px;
+      background: var(--panel-2); border: 1px solid var(--line-2); border-radius: 7px; position: relative; max-width: 160px;
+    }
+    .seq-tile.active { border-color: var(--teal); box-shadow: 0 0 10px rgba(56,232,200,0.3); }
+    .seq-tile .se { font-size: 10.5px; color: var(--teal); font-family: 'SF Mono','Fira Code',monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 134px; }
+    .seq-tile .sd { font-size: 9.5px; color: var(--muted); }
+    .seq-tile .sx { position: absolute; top: 2px; right: 5px; font-size: 10px; color: var(--dim); cursor: pointer; }
+    .seq-tile .sx:hover { color: #ff8e8e; }
+    #seq-dur { width: 56px; padding: 8px 6px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; color: var(--text); font-size: 12px; outline: none; }
+    .deck-btn.sm { padding: 8px 11px; font-size: 12px; }
+    .deck-btn.toggle.active { background: rgba(56,232,200,0.15); border-color: var(--teal-dim); color: var(--teal); }
+    #song-select { max-width: 138px; }
+
+    /* ── Mixer panel ── */
+    #mixer {
+      position: fixed; bottom: 92px; left: 220px; width: 456px; max-height: 50vh;
+      display: none; flex-direction: column;
+      background: rgba(7,10,22,0.97); border: 1px solid var(--line-2);
+      border-radius: 12px; overflow: hidden; z-index: 30; box-shadow: 0 8px 36px rgba(0,0,0,0.72);
+    }
+    #mixer.show { display: flex; }
+    .mx-header { display: flex; align-items: center; gap: 8px; padding: 8px 11px; background: linear-gradient(90deg,#15102b,#0c1020); border-bottom: 1px solid var(--line); cursor: grab; flex-shrink: 0; }
+    .mx-header:active { cursor: grabbing; }
+    .mx-dot { width: 8px; height: 8px; border-radius: 50%; background: #c9b6ff; box-shadow: 0 0 8px #c9b6ff; }
+    .mx-title { font-size: 11px; font-weight: 700; letter-spacing: 1px; color: #c9b6ff; text-transform: uppercase; flex: 1; }
+    .mx-add { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; padding: 8px 10px; border-bottom: 1px solid var(--line); flex-shrink: 0; }
+    .mx-add-lbl { font-size: 10px; color: var(--dim); text-transform: uppercase; letter-spacing: 1px; margin-right: 2px; }
+    #mx-tracks { padding: 8px 10px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 8px; }
+    .mx-empty { color: var(--dim); font-size: 11px; text-align: center; padding: 22px 10px; line-height: 1.5; }
+    .trk { border: 1px solid var(--line); border-radius: 9px; background: var(--panel-2); padding: 7px 8px; display: flex; flex-direction: column; gap: 6px; transition: opacity 0.15s; }
+    .trk.dim { opacity: 0.4; }
+    .trk-head { display: flex; align-items: center; gap: 6px; }
+    .trk-name { flex: 1; min-width: 0; padding: 4px 8px; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; color: #c9b6ff; font-size: 12px; font-weight: 700; outline: none; }
+    .trk-name:focus { border-color: #6c5bd0; }
+    .trk-btn { width: 27px; padding: 4px 0; border: 1px solid var(--line); border-radius: 6px; background: #141a30; color: var(--muted); font-size: 11px; font-weight: 700; cursor: pointer; flex-shrink: 0; }
+    .trk-btn:hover { color: var(--text); }
+    .trk-m.on { background: rgba(255,80,80,0.18); border-color: rgba(255,80,80,0.4); color: #ff8e8e; }
+    .trk-s.on { background: rgba(255,210,80,0.18); border-color: rgba(255,210,80,0.4); color: #ffd27d; }
+    .trk-x:hover { color: #ff8e8e; }
+    .trk-expr { width: 100%; padding: 6px 9px; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; color: var(--teal); font-size: 12px; outline: none; font-family: 'SF Mono','Fira Code',ui-monospace,monospace; }
+    .trk-expr:focus { border-color: var(--teal); }
+    .trk-foot { display: flex; align-items: center; gap: 6px; }
+    .trk-foot .deck-select { padding: 5px 6px; font-size: 11px; }
+    .trk-vol { flex: 1; min-width: 60px; accent-color: #c9b6ff; }
+
+    .tc-name.set_track    { color: #c9b6ff; }
+    .tc-name.remove_track { color: #ff9e9e; }
+    .tc-name.mute_track   { color: #ffd27d; }
+    .tc-name.clear_tracks { color: #ff9e9e; }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="logo">&#127911;</div>
+    <h1>DJ <span>Charlie</span></h1>
+  </div>
+  <div class="header-left" style="gap:14px;">
+    <span id="header-status"></span>
+    <button class="btn-ghost" id="mixer-toggle" onclick="toggleMixer()" style="display:none;padding:5px 11px;">&#127898; Mixer</button>
+    <button class="btn-ghost" id="console-toggle" onclick="toggleConsole()" style="display:none;padding:5px 11px;">&#128223; Tool calls</button>
+  </div>
+</header>
+
+<!-- ── Setup ── -->
+<div id="setup">
+  <div class="setup-card">
+    <h2>Step into the booth</h2>
+    <p class="sub">Charlie is a live <strong>bytebeat</strong> DJ. Talk to him and he composes and morphs one-line algorithmic music in real time. Enter your Tavus API key to start the set.</p>
+
+    <div class="field">
+      <label>Tavus API Key</label>
+      <input type="password" id="api-key-input" placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" autocomplete="off" />
+    </div>
+
+    <div class="field">
+      <label>DJ Charlie Persona ID</label>
+      <div class="inline-create">
+        <input type="text" id="persona-id-input" class="mono" placeholder="pXXXXXXXXXXXX" autocomplete="off" />
+        <button class="btn-ghost" id="create-persona-btn" onclick="createPersona()">+ Create Charlie</button>
+      </div>
+    </div>
+
+    <div class="row2">
+      <div class="field">
+        <label>Replica ID <span class="opt">(for persona creation)</span></label>
+        <input type="text" id="replica-id-input" class="mono" placeholder="r90bbd427f71" autocomplete="off" />
+      </div>
+      <div class="field">
+        <label>Opening beat <span class="opt">(optional)</span></label>
+        <input type="text" id="start-beat-input" class="mono" placeholder="t*(t>>5|t>>8)" autocomplete="off" />
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Cerebras API key <span class="opt">(only to "Create Charlie" on Cerebras Kimi — not stored)</span></label>
+      <input type="password" id="llm-key-input" class="mono" placeholder="csk-..." autocomplete="off" />
+    </div>
+
+    <button class="btn-primary" id="start-btn" onclick="startSession()">Start the Set</button>
+    <div id="setup-msg"></div>
+  </div>
+</div>
+
+<!-- ── Session ── -->
+<div id="session" class="hidden">
+  <div class="session-body">
+    <!-- Replica video -->
+    <div id="video-panel">
+      <div id="replica-video-container">
+        <video id="replica-video" autoplay playsinline></video>
+        <div id="replica-placeholder">
+          <div class="avatar-ring">&#127911;</div>
+          <span>Charlie is warming up&hellip;</span>
+        </div>
+      </div>
+      <div id="mic-meter" class="muted">
+        <div class="mic-bar"></div><div class="mic-bar"></div><div class="mic-bar"></div><div class="mic-bar"></div><div class="mic-bar"></div>
+        <div class="mic-bar"></div><div class="mic-bar"></div><div class="mic-bar"></div><div class="mic-bar"></div><div class="mic-bar"></div>
+      </div>
+      <div class="video-controls">
+        <button class="ctrl-btn" id="mic-btn" onclick="toggleMic()">&#127908; Mic</button>
+        <button class="ctrl-btn" id="cam-btn" onclick="toggleCam()">&#128247; Cam</button>
+        <button class="ctrl-btn end" onclick="endSession()">&#10005; End</button>
+      </div>
+    </div>
+
+    <!-- Player stage -->
+    <div id="player-wrap">
+      <iframe id="player-frame" src="player.html" allow="autoplay"></iframe>
+    </div>
+  </div>
+
+  <!-- Control deck -->
+  <div id="deck">
+    <div class="deck-row">
+      <input id="expr-input" class="mono" placeholder="t*(t>>5|t>>8)" />
+      <select id="rate-select" class="deck-select">
+        <option value="8000">8000 Hz</option>
+        <option value="11025">11025 Hz</option>
+        <option value="22050">22050 Hz</option>
+        <option value="32000">32000 Hz</option>
+        <option value="44100">44100 Hz</option>
+      </select>
+      <select id="mode-select" class="deck-select">
+        <option value="bytebeat">bytebeat</option>
+        <option value="signedbytebeat">signed</option>
+        <option value="floatbeat">floatbeat</option>
+      </select>
+      <button class="deck-btn go" onclick="deckPlay()">&#9654; Drop it</button>
+      <button class="deck-btn stop" onclick="deckStop()">&#9632; Stop</button>
+      <button class="deck-btn sm" onclick="saveCurrentPrompt()" title="Save this formula to your crate">&#128190; Save</button>
+      <div id="vol-wrap">
+        <span>VOL</span>
+        <input type="range" id="vol" min="0" max="100" value="50" oninput="deckVolume(this.value)" />
+      </div>
+    </div>
+    <div class="preset-row" id="preset-row">
+      <span class="lbl">Crate</span>
+    </div>
+    <div class="preset-row" id="saved-row" style="display:none;">
+      <span class="lbl">Saved</span>
+    </div>
+    <div class="deck-row seq-row">
+      <span class="lbl">Song</span>
+      <div class="seq-steps" id="seq-steps"><span class="seq-empty">Add beats to build a song&hellip;</span></div>
+      <input id="seq-dur" type="number" min="0.5" step="0.5" value="4" title="Seconds per step" />
+      <button class="deck-btn sm" onclick="seqAddCurrent()" title="Add the current beat as a step">+ Add</button>
+      <button class="deck-btn sm go" onclick="seqPlay()">&#9654; Play</button>
+      <button class="deck-btn sm stop" onclick="seqStopBtn()" title="Stop the song">&#9632;</button>
+      <button class="deck-btn sm toggle" id="seq-loop-btn" onclick="seqToggleLoop()" title="Loop the song">&#128257; Loop</button>
+      <button class="deck-btn sm" onclick="seqClear()">Clear</button>
+      <select class="deck-select" id="song-select" onchange="onSongSelect(this.value)"><option value="">Load song&hellip;</option></select>
+      <button class="deck-btn sm" onclick="saveSongPrompt()" title="Save this song to browser storage">&#128190; Song</button>
+    </div>
+  </div>
+
+  <!-- Mixer (simultaneous tracks) -->
+  <div id="mixer">
+    <div class="mx-header" id="mx-header">
+      <span class="mx-dot"></span>
+      <span class="mx-title">Mixer</span>
+      <span class="tc-count" id="mx-count">0</span>
+      <button class="tc-btn" onclick="clearTracksUI()">clear</button>
+      <button class="tc-btn" onclick="toggleMixer(false)">&#10005;</button>
+    </div>
+    <div class="mx-add">
+      <span class="mx-add-lbl">add:</span>
+      <button class="chip" onclick="addTrack('bass')">+ bass</button>
+      <button class="chip" onclick="addTrack('kick')">+ kick</button>
+      <button class="chip" onclick="addTrack('hihat')">+ hi-hat</button>
+      <button class="chip" onclick="addTrack('snare')">+ snare</button>
+      <button class="chip" onclick="addTrack('guitar')">+ guitar</button>
+      <button class="chip" onclick="addTrack('lead')">+ lead</button>
+      <button class="chip" onclick="addTrack('blank')">+ blank</button>
+    </div>
+    <div id="mx-tracks"><div class="mx-empty">No tracks yet — add a bass, some drums, a guitar… they all play together.</div></div>
+  </div>
+
+  <!-- Tool-call console -->
+  <div id="tool-console">
+    <div class="tc-header" id="tc-header">
+      <span class="tc-dot"></span>
+      <span class="tc-title">Tool Calls</span>
+      <span class="tc-count" id="tc-count">0</span>
+      <button class="tc-btn" onclick="clearToolLog()">clear</button>
+      <button class="tc-btn" onclick="toggleConsole(false)">&#10005;</button>
+    </div>
+    <div id="tool-log"><div class="tc-empty">Talk to DJ Charlie &mdash; tool calls appear here as he fires them.</div></div>
+  </div>
+
+  <!-- Status bar -->
+  <div id="status-bar">
+    <div class="sb-item"><div class="status-dot" id="conn-dot"></div><span id="conn-label">Connecting&hellip;</span></div>
+    <div class="sb-item hidden" id="sb-conv"><span>Conv:</span><span class="hl" id="sb-conv-val"></span></div>
+    <div class="sb-item hidden" id="sb-tool"><span>Last drop:</span><span class="hl" id="sb-tool-val"></span></div>
+    <div class="sb-item"><span>Audio:</span><span class="val" id="sb-audio">stopped</span></div>
+  </div>
+</div>
+
+<script>
+  // ── Preset crate — verified classic bytebeat formulas ──────────────────────
+  // name → { expr, rate, mode, vibe }  (vibe is spoken/described by DJ Charlie)
+  const PRESETS = {
+    viznut:     { expr: 't*(t>>5|t>>8)',                              rate: 8000,  mode: 'bytebeat', vibe: 'the iconic rising buzzy sawtooth melody' },
+    arps:       { expr: 't*(((t>>12)|(t>>8))&(63&(t>>4)))',           rate: 8000,  mode: 'bytebeat', vibe: 'arpeggiated and rhythmic — viznut’s very first one' },
+    sierpinski: { expr: 't&t>>8',                                     rate: 8000,  mode: 'bytebeat', vibe: 'sparse glitchy harmonic clicks' },
+    crowd:      { expr: '(t>>7|t|t>>6)*10+4*(t&t>>13|t>>6)',          rate: 8000,  mode: 'bytebeat', vibe: 'a busy, very musical chiptune crowd' },
+    harmony:    { expr: '(t*5&t>>7)|(t*3&t>>10)',                     rate: 8000,  mode: 'bytebeat', vibe: 'pleasant layered sawtooth harmony' },
+    melody42:   { expr: 't*(t>>11&t>>8&123&t>>3)',                    rate: 8000,  mode: 'bytebeat', vibe: 'dense textured multi-AND layering' },
+    nested:     { expr: 't*((t>>9|t>>13)&25&t>>6)',                   rate: 8000,  mode: 'bytebeat', vibe: 'rhythmic and melodic with nested gating' },
+    fractal:    { expr: '(t^t>>8)*(t>>16&t)',                         rate: 8000,  mode: 'bytebeat', vibe: 'an evolving fractal melody' },
+    waiver:     { expr: '(((t/91)&t)^((t/90)&t))-1',                  rate: 8000,  mode: 'bytebeat', vibe: 'a slow drifting beat from two near-equal divisors' },
+    scale:      { expr: '(t>>8&t>>16)*t>>4',                          rate: 32000, mode: 'bytebeat', vibe: 'a super-sierpinski rising scale (best at 32k)' },
+    sine:       { expr: 'sin(t/40)*0.6',                              rate: 8000,  mode: 'floatbeat', vibe: 'a smooth clean floatbeat sine tone' },
+  };
+
+  // ── Persona config (used by the in-app "Create Charlie" button) ─────────────
+  const CHARLIE_SYSTEM_PROMPT =
+    "You are DJ Charlie, a live bytebeat DJ on a video call. Bytebeat is music made from a single " +
+    "JavaScript expression f(t) evaluated per audio sample, masked to 8 bits. You compose and morph these " +
+    "beats in real time using your tools. You are playful, hype, and concise — talk like a DJ hyping a " +
+    "small crowd, 1–2 short spoken sentences, no lists or markdown. " +
+    "IMPORTANT BEHAVIOR: When the user asks for a beat, a vibe, a genre, or 'play something', CALL set_beat " +
+    "with a real bytebeat expression in terms of t (use bitwise/arithmetic ops like t*(t>>5|t>>8)). " +
+    "When they name or hint at a classic, use load_preset. Call stop_beat to stop, set_volume to change loudness. " +
+    "Always narrate the drop in one short line AS you call the tool. If audio isn't playing yet, tell the user to " +
+    "tap the screen once to enable sound. Never explain the code unless asked — just vibe.";
+
+  function charlieTools() {
+    return [
+      { type: 'function', function: {
+        name: 'set_beat',
+        description: 'Compose and play a bytebeat beat from a JavaScript expression in terms of t (the per-sample counter). Example expressions: t*(t>>5|t>>8), (t>>7|t|t>>6)*10+4*(t&t>>13|t>>6). Call this whenever the user wants a new sound, vibe, or beat.',
+        parameters: { type: 'object', properties: {
+          expr:        { type: 'string', description: 'The bytebeat expression in terms of t, e.g. t*(t>>5|t>>8). Bitwise and arithmetic ops only; for floatbeat mode output -1..1.' },
+          sample_rate: { type: 'number', description: 'Bytebeat sample rate in Hz. Default 8000. Use 32000 for bright scales.' },
+          mode:        { type: 'string', enum: ['bytebeat','signedbytebeat','floatbeat'], description: 'Output interpretation. Default bytebeat. Use floatbeat for sin/cos waveforms.' }
+        }, required: ['expr'] }
+      }},
+      { type: 'function', function: {
+        name: 'load_preset',
+        description: 'Load and play a known classic bytebeat track from the crate.',
+        parameters: { type: 'object', properties: {
+          name: { type: 'string', enum: Object.keys(PRESETS), description: 'Preset name from the crate.' }
+        }, required: ['name'] }
+      }},
+      { type: 'function', function: {
+        name: 'stop_beat',
+        description: 'Stop the music.',
+        parameters: { type: 'object', properties: {}, required: [] }
+      }},
+      { type: 'function', function: {
+        name: 'set_volume',
+        description: 'Set playback volume.',
+        parameters: { type: 'object', properties: {
+          level: { type: 'number', description: 'Volume from 0 (silent) to 100 (max).' }
+        }, required: ['level'] }
+      }},
+      { type: 'function', function: {
+        name: 'save_beat',
+        description: "Save a bytebeat formula to the user's crate (browser memory) under a name so it can be recalled later with load_preset.",
+        parameters: { type: 'object', properties: {
+          name:        { type: 'string', description: 'Short name to save it under, e.g. "my dark bass".' },
+          expr:        { type: 'string', description: 'The bytebeat expression to save. If omitted, saves whatever is currently playing.' },
+          sample_rate: { type: 'number', description: 'Sample rate in Hz. Defaults to the current rate.' },
+          mode:        { type: 'string', enum: ['bytebeat','signedbytebeat','floatbeat'], description: 'Output mode. Defaults to the current mode.' }
+        }, required: ['name'] }
+      }},
+      { type: 'function', function: {
+        name: 'play_sequence',
+        description: 'Arrange and play a SONG: an ordered list of bytebeat steps, each played for its own duration before the next begins. Use this to build a track with sections (intro, drop, breakdown).',
+        parameters: { type: 'object', properties: {
+          steps: { type: 'array', description: 'Ordered steps to play, start to finish.', items: { type: 'object', properties: {
+            expr:         { type: 'string', description: 'Bytebeat expression for this step (in terms of t). Provide either expr or name.' },
+            name:         { type: 'string', description: 'Name of a crate preset or saved beat to use for this step instead of expr.' },
+            sample_rate:  { type: 'number', description: 'Sample rate in Hz for this step. Default 8000.' },
+            mode:         { type: 'string', enum: ['bytebeat','signedbytebeat','floatbeat'] },
+            duration_sec: { type: 'number', description: 'How long this step plays, in seconds. Default 4.' }
+          } } },
+          loop: { type: 'boolean', description: 'If true, repeat the song from the start when it ends.' }
+        }, required: ['steps'] }
+      }},
+      { type: 'function', function: {
+        name: 'stop_sequence',
+        description: 'Stop the currently playing song/sequence.',
+        parameters: { type: 'object', properties: {}, required: [] }
+      }},
+      { type: 'function', function: {
+        name: 'set_track',
+        description: 'Create or update a named TRACK in the mixer. Tracks play SIMULTANEOUSLY and are mixed together — use this to layer a beat: a bass track, a kick track, a hi-hat track, a guitar track, a lead, etc. Calling it again with the same name updates that track. Build a full groove by laying down several tracks with different names.',
+        parameters: { type: 'object', properties: {
+          name:        { type: 'string', description: 'Track name / instrument, e.g. "bass", "kick", "hihat", "guitar", "lead".' },
+          expr:        { type: 'string', description: 'Bytebeat expression in terms of t for this voice. For drums, gate with the time, e.g. (t % 4000 < 600) ? ... : 0. Keep each voice in its own register so the mix is clear.' },
+          sample_rate: { type: 'number', description: 'Sample rate in Hz. Default 8000.' },
+          mode:        { type: 'string', enum: ['bytebeat','signedbytebeat','floatbeat'], description: 'Output mode. floatbeat (output -1..1, use sin/cos) is great for clean bass/leads/drums.' },
+          volume:      { type: 'number', description: 'Track volume 0-100. Lower hats/percussion so they sit under the bass and lead.' }
+        }, required: ['name','expr'] }
+      }},
+      { type: 'function', function: {
+        name: 'remove_track',
+        description: 'Remove a track from the mixer by name.',
+        parameters: { type: 'object', properties: {
+          name: { type: 'string', description: 'Name of the track to remove.' }
+        }, required: ['name'] }
+      }},
+      { type: 'function', function: {
+        name: 'mute_track',
+        description: 'Mute or unmute a track in the mixer by name.',
+        parameters: { type: 'object', properties: {
+          name:  { type: 'string', description: 'Track name.' },
+          muted: { type: 'boolean', description: 'true to mute, false to unmute.' }
+        }, required: ['name','muted'] }
+      }},
+      { type: 'function', function: {
+        name: 'clear_tracks',
+        description: 'Remove all mixer tracks (stops the layered groove).',
+        parameters: { type: 'object', properties: {}, required: [] }
+      }},
+    ];
+  }
+
+  // Pre-created DJ Charlie persona (tools defined). Override in the setup field
+  // or via "+ Create Charlie" to use your own.
+  const DEFAULT_PERSONA_ID = 'p8c22c833e43';
+
+  // DJ Charlie's LLM: Cerebras-hosted Kimi K2 (custom OpenAI-compatible LLM).
+  const CEREBRAS_BASE_URL = 'https://api.cerebras.ai/v1';
+  const CEREBRAS_MODEL    = 'moonshotai-kimi-k2.6';
+
+  // Log every conversation app-message to the browser console (helps debug tool calls).
+  const DEBUG_APPMSG = true;
+
+  // ── State ──────────────────────────────────────────────────────────────────
+  let callObject = null;
+  let tavusConversationId = null;
+  let isMicOn = false;   // muted until the set is rolling
+  let isCamOn = true;
+  let audioEls = [];
+  let audioRunning = false;
+
+  const playerFrame = () => document.getElementById('player-frame');
+  function postPlayer(msg) { playerFrame()?.contentWindow?.postMessage(msg, '*'); }
+
+  // ── Setup helpers ────────────────────────────────────────────────────────
+  function setupMsg(text, kind) {
+    const el = document.getElementById('setup-msg');
+    el.textContent = text; el.className = kind; el.style.display = text ? 'block' : 'none';
+  }
+  function getKey() { return document.getElementById('api-key-input').value.trim(); }
+
+  async function createPersona() {
+    const apiKey = getKey();
+    if (!apiKey) { setupMsg('Enter your Tavus API key first.', 'err'); return; }
+    const replica = document.getElementById('replica-id-input').value.trim() || 'r90bbd427f71';
+    const llmKey  = document.getElementById('llm-key-input').value.trim();
+    // With a Cerebras key → custom Kimi K2 LLM; otherwise fall back to the Tavus-managed alias.
+    const llmLayer = llmKey
+      ? { model: CEREBRAS_MODEL, base_url: CEREBRAS_BASE_URL, api_key: llmKey, tools: charlieTools(), speculative_inference: true }
+      : { model: 'tavus-kimi', tools: charlieTools(), speculative_inference: true };
+    const btn = document.getElementById('create-persona-btn');
+    btn.disabled = true; btn.textContent = 'Creating…';
+    try {
+      const res = await fetch('https://tavusapi.com/v2/personas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
+        body: JSON.stringify({
+          persona_name: 'DJ Charlie',
+          system_prompt: CHARLIE_SYSTEM_PROMPT,
+          pipeline_mode: 'full',
+          default_replica_id: replica,
+          context: 'You only make bytebeat music. The crate presets are: ' +
+                   Object.entries(PRESETS).map(([k,v]) => `${k} (${v.vibe})`).join('; ') + '.',
+          layers: { llm: llmLayer },
+        }),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.message || body.error || `HTTP ${res.status}`);
+      const pid = body.persona_id;
+      document.getElementById('persona-id-input').value = pid;
+      try { localStorage.setItem('djc-persona-id', pid); } catch (_) {}
+      setupMsg(`Created DJ Charlie → ${pid}`, 'ok');
+    } catch (err) {
+      setupMsg('Persona creation failed: ' + err.message, 'err');
+    } finally {
+      btn.disabled = false; btn.textContent = '+ Create Charlie';
+    }
+  }
+
+  // ── Start session ──────────────────────────────────────────────────────────
+  async function startSession() {
+    const apiKey = getKey();
+    if (!apiKey) { setupMsg('Please enter your Tavus API key.', 'err'); return; }
+    const personaId = document.getElementById('persona-id-input').value.trim();
+    if (!personaId) { setupMsg('Enter a persona ID, or click "Create Charlie".', 'err'); return; }
+
+    const startBeat = document.getElementById('start-beat-input').value.trim();
+
+    try { localStorage.setItem('djc-api-key', apiKey); } catch (_) {}
+    try { localStorage.setItem('djc-persona-id', personaId); } catch (_) {}
+    try { localStorage.setItem('djc-replica-id', document.getElementById('replica-id-input').value.trim()); } catch (_) {}
+
+    setStartBtn(true, 'Connecting…');
+    setupMsg('', '');
+
+    try {
+      const createBody = { persona_id: personaId };
+      if (startBeat) {
+        createBody.conversational_context =
+          `Open the set by immediately calling set_beat with the expression: ${startBeat}. Hype it up in one line.`;
+      }
+      const res = await fetch('https://tavusapi.com/v2/conversations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
+        body: JSON.stringify(createBody),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.message || body.error || `HTTP ${res.status}`);
+      const { conversation_url, conversation_id } = body;
+      if (!conversation_url) throw new Error('No conversation_url in response.');
+      tavusConversationId = conversation_id;
+
+      showSession();
+      // Preload the opening beat into the player (muted until first gesture).
+      if (startBeat) setTimeout(() => postPlayer({ type: 'set', expr: startBeat }), 400);
+
+      callObject = DailyIframe.createCallObject({ audioSource: true, videoSource: true });
+      callObject
+        .on('joined-meeting',      onJoined)
+        .on('participant-updated', onParticipantUpdated)
+        .on('track-started',       onTrackStarted)
+        .on('track-stopped',       onTrackStopped)
+        .on('app-message',         onAppMessage)
+        .on('left-meeting',        onLeftMeeting)
+        .on('error',               onCallError);
+      await callObject.join({ url: conversation_url });
+    } catch (err) {
+      console.error(err);
+      setupMsg(err.message, 'err');
+      setStartBtn(false, 'Start the Set');
+      hideSession();
+    }
+  }
+
+  // ── Daily handlers ───────────────────────────────────────────────────────
+  function onJoined() {
+    setConn('active', 'Connected');
+    document.getElementById('header-status').textContent = 'On air';
+    if (tavusConversationId) {
+      show('sb-conv');
+      document.getElementById('sb-conv-val').textContent = tavusConversationId;
+    }
+    // Mic on right away — talking to Charlie is the whole point.
+    isMicOn = true;
+    callObject.setLocalAudio(true);
+    startMicMeter();
+    setTimeout(injectToolContext, 800);
+  }
+
+  function injectToolContext() {
+    if (!callObject || !tavusConversationId) return;
+    const crate = Object.entries(PRESETS)
+      .map(([k, v]) => `- ${k}: ${v.expr}  (${v.vibe})`).join('\n');
+    callObject.sendAppMessage({
+      message_type: 'conversation',
+      event_type:   'conversation.append_llm_context',
+      conversation_id: tavusConversationId,
+      properties: { context:
+`You are DJ Charlie, controlling a live bytebeat player on screen via tools.
+
+Call set_beat({expr, sample_rate?, mode?}) to compose/play any beat. expr is a JS expression in terms of t.
+Call load_preset({name}) for a known classic. Crate:
+${crate}
+
+Call stop_beat() to stop. Call set_volume({level}) where level is 0-100.
+
+Call save_beat({name, expr?}) to save a formula to the user's crate (browser memory) so it can be recalled by name later (omit expr to save what's playing).
+Call play_sequence({steps:[{expr OR name, duration_sec, sample_rate?, mode?}], loop?}) to arrange several beats into a SONG that plays each step in order — great for building intro/drop/breakdown structure. Call stop_sequence() to stop the song.
+
+LAYERED TRACKS (play at the SAME time, mixed together): call set_track({name, expr, sample_rate?, mode?, volume?}) to add/update a named voice — e.g. a "bass" track, a "kick" track, a "hihat" track, a "guitar" track. Build a full groove by laying down several tracks with different names; calling set_track again with the same name updates that track. Gate drum voices by time, e.g. (t % 4000 < 600) ? sin(sqrt(t%4000)*3.2)*0.9 : 0 for a kick. Keep voices in different registers and turn percussion volume down so the mix stays clear. Use remove_track({name}), mute_track({name, muted}), and clear_tracks() to manage the mix. (Tracks are separate from the single deck beat / set_beat, which is the "lead" voice.)
+
+When the user asks for a "faster"/"darker"/"crazier"/"chiller" beat, MORPH the current expression — change shifts, multipliers, and masks — and call set_beat with the new expression. Keep spoken replies to one short hype line. If the user can't hear anything, tell them to tap the screen once to enable audio (browser autoplay rule).` },
+    }, '*');
+  }
+
+  function onParticipantUpdated(evt) {
+    if (evt.participant.local) return;
+    const vState = evt.participant.tracks?.video?.state;
+    const ph = document.getElementById('replica-placeholder');
+    const vid = document.getElementById('replica-video');
+    if (vState === 'playable') { ph.style.display = 'none'; vid.style.display = 'block'; }
+    else if (vState === 'off' || vState === 'interrupted') { ph.style.display = 'flex'; vid.style.display = 'none'; }
+  }
+
+  function onTrackStarted(evt) {
+    const { participant, track } = evt;
+    if (!track || participant.local) return;
+    if (track.kind === 'video') {
+      document.getElementById('replica-placeholder').style.display = 'none';
+      document.getElementById('replica-video').style.display = 'block';
+      attachVideo('replica-video', track);
+    } else if (track.kind === 'audio') {
+      const el = new Audio(); el.autoplay = true;
+      el.srcObject = new MediaStream([track]);
+      document.body.appendChild(el); audioEls.push(el);
+    }
+  }
+  function onTrackStopped(evt) {
+    if (!evt.participant.local && evt.track?.kind === 'video') {
+      document.getElementById('replica-video').style.display = 'none';
+      document.getElementById('replica-placeholder').style.display = 'flex';
+    }
+  }
+
+  function onAppMessage(evt) {
+    const data = evt.data;
+    // Debug: surface EVERY conversation app-message so missing tool calls are visible.
+    if (DEBUG_APPMSG && data?.message_type === 'conversation') {
+      console.log('[app-message]', data.event_type, data.properties || data);
+    }
+    if (data?.message_type !== 'conversation') return;
+    if (data.event_type !== 'conversation.tool_call') return;
+
+    const { name, arguments: argsRaw } = data.properties || {};
+    let args = {};
+    try { args = typeof argsRaw === 'string' ? JSON.parse(argsRaw) : (argsRaw || {}); } catch (_) {}
+
+    handleToolCall(name, args);
+
+    // Complete the tool turn without a stray TTS echo (mirrors the diagnostics embed).
+    if (!args.response_to_user) {
+      callObject?.sendAppMessage({
+        message_type: 'conversation',
+        event_type:   'conversation.echo',
+        conversation_id: data.conversation_id,
+        properties: { modality: 'text', text: '', done: true },
+      }, '*');
+    }
+  }
+
+  function onLeftMeeting() { setConn('', 'Disconnected'); document.getElementById('header-status').textContent = ''; }
+  function onCallError(evt) { console.error('Daily error:', evt); setConn('error', 'Error'); }
+
+  // ── Tool-call → player control ───────────────────────────────────────────
+  function handleToolCall(name, args) {
+    logToolCall(name, args, 'voice');
+    if (name === 'set_beat') {
+      const beat = {
+        expr: String(args.expr || '').trim(),
+        rate: args.sample_rate ? +args.sample_rate : undefined,
+        mode: args.mode || guessMode(String(args.expr || '')),
+      };
+      if (!beat.expr) return;
+      playBeat(beat);
+      lastTool(`set_beat(${truncate(beat.expr, 28)})`);
+      tellCharlie(`Now playing: ${beat.expr} at ${beat.rate || 8000} Hz (${beat.mode || 'bytebeat'}).`);
+    }
+    else if (name === 'load_preset') {
+      const p = resolveBeat(args.name);
+      if (!p) { tellCharlie(`No preset or saved beat named "${args.name}". Available: ${allBeatNames().join(', ')}.`); return; }
+      playBeat({ expr: p.expr, rate: p.rate, mode: p.mode });
+      setActiveChip(args.name);
+      lastTool(`load_preset(${args.name})`);
+      tellCharlie(`Dropped "${args.name}"${p.vibe ? ` — ${p.vibe}` : ''}.`);
+    }
+    else if (name === 'stop_beat') {
+      postPlayer({ type: 'stop' });
+      lastTool('stop_beat()');
+    }
+    else if (name === 'set_volume') {
+      const level = Math.max(0, Math.min(100, +args.level || 0));
+      postPlayer({ type: 'volume', value: level / 100 });
+      document.getElementById('vol').value = level;
+      lastTool(`set_volume(${level})`);
+    }
+    else if (name === 'save_beat') {
+      const ok = saveBeatNamed(args.name, { expr: args.expr, rate: args.sample_rate, mode: args.mode });
+      lastTool(`save_beat(${args.name})`);
+      tellCharlie(ok ? `Saved "${args.name}" to the crate — recall it any time.` : `Couldn't save "${args.name}" — no expression to save.`);
+    }
+    else if (name === 'play_sequence') {
+      const steps = (args.steps || []).map(toStep).filter(s => s.expr);
+      if (!steps.length) { tellCharlie('That song had no valid steps.'); return; }
+      playSequence(steps, !!args.loop);
+      lastTool(`play_sequence(${steps.length}${args.loop ? ' ↻' : ''})`);
+      tellCharlie(`Playing a ${steps.length}-step song${args.loop ? ' on loop' : ''}.`);
+    }
+    else if (name === 'stop_sequence') {
+      stopSequence(true);
+      lastTool('stop_sequence()');
+    }
+    else if (name === 'set_track') {
+      const tn = String(args.name || '').trim();
+      const expr = String(args.expr || '').trim();
+      if (!tn || !expr) { tellCharlie('A track needs a name and an expression.'); return; }
+      const vol = args.volume != null ? Math.max(0, Math.min(1, +args.volume / 100)) : undefined;
+      upsertTrack(tn, { expr, rate: args.sample_rate, mode: args.mode || guessMode(expr), vol }, true);
+      lastTool(`set_track(${tn})`);
+      tellCharlie(`Laid down the "${tn}" track — ${_tracks.length} track${_tracks.length === 1 ? '' : 's'} in the mix.`);
+    }
+    else if (name === 'remove_track') {
+      removeTrackUI(String(args.name || ''));
+      lastTool(`remove_track(${args.name})`);
+    }
+    else if (name === 'mute_track') {
+      setTrackMuteByName(String(args.name || ''), !!args.muted);
+      lastTool(`mute_track(${args.name}=${!!args.muted})`);
+    }
+    else if (name === 'clear_tracks') {
+      clearTracksUI();
+      lastTool('clear_tracks()');
+    }
+  }
+
+  // Push a beat to the player AND mirror it into the deck UI.
+  function playBeat(beat) {
+    if (beat.expr != null) document.getElementById('expr-input').value = beat.expr;
+    if (beat.rate != null) document.getElementById('rate-select').value = String(beat.rate);
+    if (beat.mode != null) document.getElementById('mode-select').value = beat.mode;
+    if (!PRESETS[Object.keys(PRESETS).find(k => PRESETS[k].expr === beat.expr)]) clearActiveChip();
+    postPlayer({ type: 'set', ...beat, play: true });
+  }
+
+  function tellCharlie(text) {
+    if (!callObject || !tavusConversationId) return;
+    callObject.sendAppMessage({
+      message_type: 'conversation',
+      event_type:   'conversation.append_llm_context',
+      conversation_id: tavusConversationId,
+      properties: { context: text },
+    }, '*');
+  }
+
+  // ── Manual deck controls ─────────────────────────────────────────────────
+  function deckPlay() {
+    const expr = document.getElementById('expr-input').value.trim();
+    if (!expr) return;
+    const rate = +document.getElementById('rate-select').value;
+    const mode = document.getElementById('mode-select').value;
+    clearActiveChip();
+    logToolCall('set_beat', { expr, sample_rate: rate, mode }, 'manual');
+    postPlayer({ type: 'set', expr, rate, mode, play: true });
+  }
+  function deckStop() { logToolCall('stop_beat', {}, 'manual'); postPlayer({ type: 'stop' }); }
+  function deckVolume(v) { postPlayer({ type: 'volume', value: (+v) / 100 }); }
+
+  function loadPresetChip(name) {
+    const p = PRESETS[name];
+    if (!p) return;
+    document.getElementById('expr-input').value = p.expr;
+    document.getElementById('rate-select').value = String(p.rate);
+    document.getElementById('mode-select').value = p.mode;
+    setActiveChip(name);
+    logToolCall('load_preset', { name }, 'manual');
+    postPlayer({ type: 'set', expr: p.expr, rate: p.rate, mode: p.mode, play: true });
+  }
+
+  function buildPresetChips() {
+    const row = document.getElementById('preset-row');
+    for (const name of Object.keys(PRESETS)) {
+      const b = document.createElement('button');
+      b.className = 'chip'; b.dataset.name = name; b.textContent = name;
+      b.title = PRESETS[name].vibe;
+      b.onclick = () => loadPresetChip(name);
+      row.appendChild(b);
+    }
+  }
+  function setActiveChip(name) {
+    document.querySelectorAll('.chip').forEach(c => c.classList.toggle('active', c.dataset.name === name));
+  }
+  function clearActiveChip() { document.querySelectorAll('.chip').forEach(c => c.classList.remove('active')); }
+
+  // ── Saved beats (browser storage) ──────────────────────────────────────────
+  function loadCrate() { try { return JSON.parse(localStorage.getItem('djc-crate') || '[]'); } catch (_) { return []; } }
+  function saveCrate(a) { try { localStorage.setItem('djc-crate', JSON.stringify(a)); } catch (_) {} }
+  function resolveBeat(name) { return PRESETS[name] || loadCrate().find(b => b.name === name) || null; }
+  function allBeatNames() { return [...Object.keys(PRESETS), ...loadCrate().map(b => b.name)]; }
+  function curExpr() { return document.getElementById('expr-input').value.trim(); }
+
+  function saveBeatNamed(name, beat) {
+    name = (name || '').trim(); if (!name) return false;
+    beat = beat || {};
+    const expr = (beat.expr || curExpr()).trim(); if (!expr) return false;
+    const rate = beat.rate ? +beat.rate : +document.getElementById('rate-select').value;
+    const mode = beat.mode || document.getElementById('mode-select').value;
+    const crate = loadCrate().filter(b => b.name !== name);
+    crate.push({ name, expr, rate, mode });
+    saveCrate(crate); renderSaved();
+    return true;
+  }
+  function deleteSavedBeat(name) { saveCrate(loadCrate().filter(b => b.name !== name)); renderSaved(); }
+
+  function saveCurrentPrompt() {
+    if (!curExpr()) return;
+    const name = (prompt('Save this beat as:') || '').trim(); if (!name) return;
+    if (saveBeatNamed(name, {})) logToolCall('save_beat', { name, expr: curExpr() }, 'manual');
+  }
+
+  function renderSaved() {
+    const row = document.getElementById('saved-row');
+    if (!row) return;
+    row.querySelectorAll('.chip').forEach(c => c.remove());
+    const crate = loadCrate();
+    row.style.display = crate.length ? 'flex' : 'none';
+    for (const b of crate) {
+      const chip = document.createElement('button');
+      chip.className = 'chip saved'; chip.dataset.name = b.name;
+      chip.title = `${b.expr}  ·  ${b.rate} Hz · ${b.mode}`;
+      chip.innerHTML = `${escapeHtml(b.name)}<span class="x" title="delete">✕</span>`;
+      chip.onclick = (e) => {
+        if (e.target.classList.contains('x')) { e.stopPropagation(); deleteSavedBeat(b.name); return; }
+        loadSavedChip(b.name);
+      };
+      row.appendChild(chip);
+    }
+  }
+  function loadSavedChip(name) {
+    const b = resolveBeat(name); if (!b) return;
+    document.getElementById('expr-input').value = b.expr;
+    document.getElementById('rate-select').value = String(b.rate);
+    document.getElementById('mode-select').value = b.mode;
+    setActiveChip(name);
+    logToolCall('load_preset', { name }, 'manual');
+    postPlayer({ type: 'set', expr: b.expr, rate: b.rate, mode: b.mode, play: true });
+  }
+
+  // ── Sequencer / songs ───────────────────────────────────────────────────────
+  let _seq = [];                 // [{expr, rate, mode, dur}]
+  let _seqIdx = -1, _seqTimer = null, _seqLoop = false, _seqPlaying = false;
+
+  // Normalize an LLM-supplied step (expr OR named beat) into {expr,rate,mode,dur}.
+  function toStep(s) {
+    s = s || {};
+    let expr = s.expr, rate = s.sample_rate, mode = s.mode;
+    if ((!expr || !String(expr).trim()) && s.name) {
+      const b = resolveBeat(s.name);
+      if (b) { expr = b.expr; rate = rate ?? b.rate; mode = mode ?? b.mode; }
+    }
+    const ex = String(expr || '').trim();
+    return { expr: ex, rate: rate ? +rate : 8000, mode: mode || guessMode(ex), dur: s.duration_sec ? +s.duration_sec : 4 };
+  }
+
+  function seqAddCurrent() {
+    const expr = curExpr(); if (!expr) return;
+    const dur = Math.max(0.5, +document.getElementById('seq-dur').value || 4);
+    _seq.push({ expr, rate: +document.getElementById('rate-select').value, mode: document.getElementById('mode-select').value, dur });
+    renderSeq();
+  }
+  function seqRemove(i) { _seq.splice(i, 1); if (_seqPlaying) stopSequence(); renderSeq(); }
+  function seqClear() { stopSequence(); _seq = []; renderSeq(); }
+
+  function renderSeq() {
+    const box = document.getElementById('seq-steps');
+    if (!box) return;
+    box.innerHTML = '';
+    if (!_seq.length) { box.innerHTML = '<span class="seq-empty">Add beats to build a song…</span>'; return; }
+    _seq.forEach((s, i) => {
+      const t = document.createElement('div');
+      t.className = 'seq-tile' + (i === _seqIdx ? ' active' : '');
+      t.innerHTML = `<span class="se">${escapeHtml(s.expr)}</span><span class="sd">${s.dur}s · ${(s.rate / 1000) | 0}k · ${s.mode === 'floatbeat' ? 'float' : s.mode === 'signedbytebeat' ? 'signed' : 'byte'}</span><span class="sx" title="remove">✕</span>`;
+      t.querySelector('.sx').onclick = () => seqRemove(i);
+      box.appendChild(t);
+    });
+  }
+  function highlightStep(idx) {
+    document.querySelectorAll('#seq-steps .seq-tile').forEach((el, i) => el.classList.toggle('active', i === idx));
+  }
+
+  function playSequence(steps, loop) {
+    stopSequence();
+    if (steps && steps.length) { _seq = steps; renderSeq(); }
+    if (!_seq.length) return;
+    _seqLoop = !!loop;
+    document.getElementById('seq-loop-btn').classList.toggle('active', _seqLoop);
+    _seqPlaying = true; _seqIdx = -1;
+    seqNext();
+  }
+  function seqNext() {
+    _seqIdx++;
+    if (_seqIdx >= _seq.length) {
+      if (_seqLoop) _seqIdx = 0; else { stopSequence(); return; }
+    }
+    const s = _seq[_seqIdx];
+    highlightStep(_seqIdx);
+    document.getElementById('expr-input').value = s.expr;
+    document.getElementById('rate-select').value = String(s.rate);
+    document.getElementById('mode-select').value = s.mode;
+    postPlayer({ type: 'set', expr: s.expr, rate: s.rate, mode: s.mode, play: true });
+    _seqTimer = setTimeout(seqNext, Math.max(0.2, s.dur || 4) * 1000);
+  }
+  function stopSequence(stopAudio) {
+    if (_seqTimer) { clearTimeout(_seqTimer); _seqTimer = null; }
+    _seqPlaying = false; _seqIdx = -1; highlightStep(-1);
+    if (stopAudio) postPlayer({ type: 'stop' });
+  }
+
+  // Manual sequencer buttons.
+  function seqPlay() {
+    if (!_seq.length) {
+      // Empty song — don't be a dead button. Use the current deck beat if there is one,
+      // otherwise tell the user how to build a song.
+      if (curExpr()) {
+        seqAddCurrent();
+      } else {
+        flashSeqHint('Add beats first: load a preset or type a formula, then “+ Add”.');
+        return;
+      }
+    }
+    logToolCall('play_sequence', { steps: _seq.length, loop: _seqLoop }, 'manual');
+    playSequence(null, _seqLoop);
+  }
+  function flashSeqHint(msg) {
+    const box = document.getElementById('seq-steps');
+    if (!box) return;
+    box.innerHTML = `<span class="seq-empty" style="color:#ff9e9e">${escapeHtml(msg)}</span>`;
+    setTimeout(() => { if (!_seq.length) renderSeq(); }, 2800);
+  }
+  function seqStopBtn() { logToolCall('stop_sequence', {}, 'manual'); stopSequence(true); }
+  function seqToggleLoop() { _seqLoop = !_seqLoop; document.getElementById('seq-loop-btn').classList.toggle('active', _seqLoop); }
+
+  // ── Songs (saved sequences) ─────────────────────────────────────────────────
+  function loadSongs() { try { return JSON.parse(localStorage.getItem('djc-songs') || '[]'); } catch (_) { return []; } }
+  function saveSongs(a) { try { localStorage.setItem('djc-songs', JSON.stringify(a)); } catch (_) {} }
+  function saveSongPrompt() {
+    if (!_seq.length) return;
+    const name = (prompt('Save this song as:') || '').trim(); if (!name) return;
+    const songs = loadSongs().filter(s => s.name !== name);
+    songs.push({ name, steps: _seq.slice(), loop: _seqLoop });
+    saveSongs(songs); renderSongList(name);
+  }
+  function renderSongList(sel) {
+    const s = document.getElementById('song-select');
+    if (!s) return;
+    const songs = loadSongs();
+    s.innerHTML = '<option value="">Load song…</option>' +
+      songs.map(x => `<option value="${escapeHtml(x.name)}">${escapeHtml(x.name)} (${x.steps.length})</option>`).join('');
+    if (sel) s.value = sel;
+  }
+  function onSongSelect(name) {
+    if (!name) return;
+    const song = loadSongs().find(x => x.name === name); if (!song) return;
+    _seq = song.steps.slice(); _seqLoop = !!song.loop;
+    document.getElementById('seq-loop-btn').classList.toggle('active', _seqLoop);
+    renderSeq();
+  }
+
+  // ── Mixer: simultaneous tracks ──────────────────────────────────────────────
+  // Each track is an independent bytebeat voice; the player mixes them together.
+  // Booth model: _tracks = [{ name, expr, rate, mode, vol(0-1), mute, solo }].
+  // The deck's single beat is the player's "lead" track and is separate from these.
+  let _tracks = [];
+
+  // Instrument starter templates (editable — just a starting point per voice).
+  const TRACK_TEMPLATES = {
+    bass:   { expr: '(t % 4000 < 2000) ? sin(t/21)*0.5 : 0',                                     rate: 8000, mode: 'floatbeat', vol: 0.9 },
+    kick:   { expr: '(t % 4000 < 600) ? sin(sqrt(t%4000)*3.2)*(1-(t%4000)/600)*0.9 : 0',         rate: 8000, mode: 'floatbeat', vol: 0.9 },
+    hihat:  { expr: '(t % 1000 < 200) ? (((t*t*53)%512)/256-1)*0.22 : 0',                         rate: 8000, mode: 'floatbeat', vol: 0.5 },
+    snare:  { expr: '(t % 4000 >= 2000 && t % 4000 < 2350) ? (((t*t*17)%512)/256-1)*0.45 : 0',    rate: 8000, mode: 'floatbeat', vol: 0.6 },
+    guitar: { expr: '(sin(t/8)+sin(t/5.34)*0.5+sin(t/4)*0.3)*0.25',                               rate: 8000, mode: 'floatbeat', vol: 0.6 },
+    lead:   { expr: 't*(t>>5|t>>8)',                                                              rate: 8000, mode: 'bytebeat',  vol: 0.7 },
+    blank:  { expr: '',                                                                            rate: 8000, mode: 'bytebeat',  vol: 0.8 },
+  };
+
+  const RATE_OPTS = [8000,11025,22050,32000,44100].map(r => `<option value="${r}">${(r/1000)}k</option>`).join('');
+  const MODE_OPTS = [['bytebeat','byte'],['signedbytebeat','signed'],['floatbeat','float']].map(([v,l]) => `<option value="${v}">${l}</option>`).join('');
+
+  const soloActive = () => _tracks.some(t => t.solo);
+  const effMute = (t) => t.mute || (soloActive() && !t.solo);
+  const stripEl = (name) => document.querySelector(`#mx-tracks .trk[data-name="${CSS.escape(name)}"]`);
+
+  // Full update (recompiles the voice). Use on add / expr / rate / mode change.
+  function pushTrackFull(t) {
+    postPlayer({ type: 'track', name: t.name, expr: t.expr, rate: t.rate, mode: t.mode, gain: t.vol, mute: effMute(t), play: true });
+  }
+  // Mix-only update (no recompile). Use on volume / mute / solo change.
+  function pushTrackMix(t) {
+    postPlayer({ type: 'track', name: t.name, gain: t.vol, mute: effMute(t) });
+  }
+  function pushAllMutes() { _tracks.forEach(pushTrackMix); }
+  function pushAllTracksToPlayer() { _tracks.forEach(pushTrackFull); }
+
+  function uniqueName(base) {
+    base = (base || 'track').trim() || 'track';
+    if (!_tracks.some(t => t.name === base)) return base;
+    let n = 2; while (_tracks.some(t => t.name === `${base} ${n}`)) n++;
+    return `${base} ${n}`;
+  }
+
+  function updateMixCount() { document.getElementById('mx-count').textContent = String(_tracks.length); }
+  function refreshSoloUI() {
+    const any = soloActive();
+    document.querySelectorAll('#mx-tracks .trk').forEach(el => {
+      const t = _tracks.find(x => x.name === el.dataset.name);
+      el.classList.toggle('dim', any && t && !t.solo && !t.mute);
+    });
+  }
+
+  function appendStrip(t) {
+    const box = document.getElementById('mx-tracks');
+    const empty = box.querySelector('.mx-empty'); if (empty) empty.remove();
+    const el = document.createElement('div');
+    el.className = 'trk'; el.dataset.name = t.name;
+    el.innerHTML =
+      `<div class="trk-head">
+         <input class="trk-name" value="${escapeHtml(t.name)}" />
+         <button class="trk-btn trk-m" title="mute">M</button>
+         <button class="trk-btn trk-s" title="solo">S</button>
+         <button class="trk-btn trk-x" title="remove">✕</button>
+       </div>
+       <input class="trk-expr mono" placeholder="bytebeat expression in t…" value="${escapeHtml(t.expr)}" />
+       <div class="trk-foot">
+         <select class="trk-rate deck-select">${RATE_OPTS}</select>
+         <select class="trk-mode deck-select">${MODE_OPTS}</select>
+         <input class="trk-vol" type="range" min="0" max="100" value="${Math.round(t.vol * 100)}" />
+       </div>`;
+    el.querySelector('.trk-rate').value = String(t.rate);
+    el.querySelector('.trk-mode').value = t.mode;
+    el.querySelector('.trk-m').classList.toggle('on', t.mute);
+    el.querySelector('.trk-s').classList.toggle('on', t.solo);
+
+    const nameEl = el.querySelector('.trk-name');
+    nameEl.addEventListener('change', () => renameTrack(t, nameEl.value, el));
+    const exprEl = el.querySelector('.trk-expr');
+    const commitExpr = () => { t.expr = exprEl.value; pushTrackFull(t); persistTracks(); };
+    exprEl.addEventListener('change', commitExpr);
+    exprEl.addEventListener('keydown', e => { if (e.key === 'Enter') commitExpr(); });
+    el.querySelector('.trk-rate').addEventListener('change', e => { t.rate = +e.target.value; pushTrackFull(t); persistTracks(); });
+    el.querySelector('.trk-mode').addEventListener('change', e => { t.mode = e.target.value; pushTrackFull(t); persistTracks(); });
+    el.querySelector('.trk-vol').addEventListener('input', e => { t.vol = (+e.target.value) / 100; pushTrackMix(t); persistTracks(); });
+    el.querySelector('.trk-m').addEventListener('click', e => { t.mute = !t.mute; e.target.classList.toggle('on', t.mute); pushTrackMix(t); refreshSoloUI(); persistTracks(); });
+    el.querySelector('.trk-s').addEventListener('click', e => { t.solo = !t.solo; e.target.classList.toggle('on', t.solo); pushAllMutes(); refreshSoloUI(); persistTracks(); });
+    el.querySelector('.trk-x').addEventListener('click', () => removeTrackUI(t.name));
+    box.appendChild(el);
+  }
+
+  function updateStripUI(t) {
+    const el = stripEl(t.name); if (!el) return;
+    el.querySelector('.trk-expr').value = t.expr;
+    el.querySelector('.trk-rate').value = String(t.rate);
+    el.querySelector('.trk-mode').value = t.mode;
+    el.querySelector('.trk-vol').value = Math.round(t.vol * 100);
+    el.querySelector('.trk-m').classList.toggle('on', t.mute);
+  }
+
+  // Create or update a track by name (used by the +buttons and by DJ Charlie).
+  function upsertTrack(name, opts, openMixer) {
+    let t = _tracks.find(x => x.name === name);
+    if (!t) {
+      t = { name, expr: opts.expr || '', rate: opts.rate || 8000, mode: opts.mode || 'bytebeat',
+            vol: opts.vol != null ? opts.vol : 0.8, mute: false, solo: false };
+      _tracks.push(t); appendStrip(t); updateMixCount();
+    } else {
+      if (opts.expr != null) t.expr = String(opts.expr);
+      if (opts.rate != null) t.rate = +opts.rate;
+      if (opts.mode != null) t.mode = opts.mode;
+      if (opts.vol  != null) t.vol  = opts.vol;
+      updateStripUI(t);
+    }
+    pushTrackFull(t); persistTracks();
+    if (openMixer) toggleMixer(true);
+    return t;
+  }
+
+  function addTrack(tpl) {
+    const T = TRACK_TEMPLATES[tpl] || TRACK_TEMPLATES.blank;
+    const name = uniqueName(tpl === 'blank' ? 'track' : tpl);
+    upsertTrack(name, { expr: T.expr, rate: T.rate, mode: T.mode, vol: T.vol }, true);
+    if (tpl === 'blank') stripEl(name)?.querySelector('.trk-expr')?.focus();
+  }
+
+  function removeTrackUI(name) {
+    const i = _tracks.findIndex(x => x.name === name); if (i < 0) return;
+    _tracks.splice(i, 1);
+    stripEl(name)?.remove();
+    postPlayer({ type: 'removeTrack', name });
+    updateMixCount(); pushAllMutes(); refreshSoloUI(); persistTracks();
+    if (!_tracks.length) document.getElementById('mx-tracks').innerHTML =
+      '<div class="mx-empty">No tracks yet — add a bass, some drums, a guitar… they all play together.</div>';
+  }
+
+  function clearTracksUI() {
+    _tracks.forEach(t => postPlayer({ type: 'removeTrack', name: t.name })); // keep the deck "lead"
+    _tracks = [];
+    document.getElementById('mx-tracks').innerHTML =
+      '<div class="mx-empty">No tracks yet — add a bass, some drums, a guitar… they all play together.</div>';
+    updateMixCount(); persistTracks();
+  }
+
+  function renameTrack(t, newName, el) {
+    newName = (newName || '').trim();
+    if (!newName || newName === t.name) { el.querySelector('.trk-name').value = t.name; return; }
+    if (_tracks.some(x => x !== t && x.name === newName)) newName = uniqueName(newName);
+    postPlayer({ type: 'removeTrack', name: t.name });
+    t.name = newName; el.dataset.name = newName; el.querySelector('.trk-name').value = newName;
+    pushTrackFull(t); persistTracks();
+  }
+
+  function setTrackMuteByName(name, muted) {
+    const t = _tracks.find(x => x.name === name); if (!t) return;
+    t.mute = !!muted;
+    stripEl(name)?.querySelector('.trk-m')?.classList.toggle('on', t.mute);
+    pushTrackMix(t); refreshSoloUI(); persistTracks();
+  }
+
+  function persistTracks() { try { localStorage.setItem('djc-tracks', JSON.stringify(_tracks)); } catch (_) {} }
+  function restoreTracks() {
+    let saved = []; try { saved = JSON.parse(localStorage.getItem('djc-tracks') || '[]'); } catch (_) {}
+    if (!Array.isArray(saved) || !saved.length) return;
+    _tracks = saved.map(t => ({ name: t.name, expr: t.expr || '', rate: t.rate || 8000, mode: t.mode || 'bytebeat', vol: t.vol != null ? t.vol : 0.8, mute: !!t.mute, solo: !!t.solo }));
+    document.getElementById('mx-tracks').innerHTML = '';
+    _tracks.forEach(appendStrip);
+    updateMixCount(); refreshSoloUI();
+  }
+
+  function toggleMixer(force) {
+    const el = document.getElementById('mixer');
+    el.classList.toggle('show', force === undefined ? !el.classList.contains('show') : force);
+  }
+
+  // ── Player → app state messages ──────────────────────────────────────────
+  window.addEventListener('message', (e) => {
+    const m = e.data;
+    if (!m) return;
+    if (m.type === 'ready') { pushAllTracksToPlayer(); return; } // re-send tracks to a fresh player
+    if (m.type !== 'state') return;
+    audioRunning = m.playing && !m.suspended;
+    const el = document.getElementById('sb-audio');
+    const n = (m.tracks || []).length;
+    el.textContent = m.suspended ? 'tap player to enable' : (m.playing ? `live ● ${n ? n + ' trk' : ''}` : 'stopped');
+    el.style.color = audioRunning ? 'var(--teal)' : 'var(--muted)';
+  });
+
+  // ── Mic / cam ────────────────────────────────────────────────────────────
+  async function toggleMic() {
+    if (!callObject) return;
+    isMicOn = !isMicOn;
+    await callObject.setLocalAudio(isMicOn);
+    const btn = document.getElementById('mic-btn');
+    btn.innerHTML = isMicOn ? '&#127908; Mic' : '&#128263; Muted';
+    btn.className = isMicOn ? 'ctrl-btn' : 'ctrl-btn muted';
+    isMicOn ? startMicMeter() : stopMicMeter();
+  }
+  async function toggleCam() {
+    if (!callObject) return;
+    isCamOn = !isCamOn;
+    await callObject.setLocalVideo(isCamOn);
+    const btn = document.getElementById('cam-btn');
+    btn.innerHTML = isCamOn ? '&#128247; Cam' : '&#128247; Off';
+    btn.className = isCamOn ? 'ctrl-btn' : 'ctrl-btn muted';
+  }
+
+  async function endSession() {
+    if (callObject) { await callObject.leave(); callObject.destroy(); callObject = null; }
+    audioEls.forEach(el => { el.srcObject = null; el.remove(); }); audioEls = [];
+    postPlayer({ type: 'stop' });
+    tavusConversationId = null; isMicOn = false; isCamOn = true;
+    stopMicMeter();
+    toggleConsole(false);
+    toggleMixer(false);
+    document.getElementById('console-toggle').style.display = 'none';
+    document.getElementById('mixer-toggle').style.display = 'none';
+    clearToolLog();
+    hideSession(); setStartBtn(false, 'Start the Set');
+    document.getElementById('replica-video').style.display = 'none';
+    document.getElementById('replica-placeholder').style.display = 'flex';
+    document.getElementById('replica-video').srcObject = null;
+    hide('sb-conv'); hide('sb-tool');
+    document.getElementById('header-status').textContent = '';
+  }
+
+  // ── Mic meter ──────────────────────────────────────────────────────────────
+  let _audioCtx = null, _analyser = null, _meterRaf = null;
+  const _bars = () => document.querySelectorAll('.mic-bar');
+  function startMicMeter() {
+    const track = callObject?.participants()?.local?.tracks?.audio?.persistentTrack;
+    if (!track) { setTimeout(startMicMeter, 400); return; }
+    _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const src = _audioCtx.createMediaStreamSource(new MediaStream([track]));
+    _analyser = _audioCtx.createAnalyser();
+    _analyser.fftSize = 256; _analyser.smoothingTimeConstant = 0.75;
+    src.connect(_analyser);
+    document.getElementById('mic-meter').classList.remove('muted');
+    drawMicMeter();
+  }
+  function stopMicMeter() {
+    cancelAnimationFrame(_meterRaf);
+    _audioCtx?.close().catch(() => {});
+    _audioCtx = null; _analyser = null;
+    const m = document.getElementById('mic-meter'); if (m) m.classList.add('muted');
+    _bars().forEach(b => { b.style.height = '3px'; b.style.opacity = '0.15'; });
+  }
+  function drawMicMeter() {
+    if (!_analyser) return;
+    const data = new Uint8Array(_analyser.frequencyBinCount);
+    _analyser.getByteFrequencyData(data);
+    const voice = data.slice(1, 16);
+    const level = voice.reduce((s, v) => s + v, 0) / voice.length / 255;
+    const bars = _bars(), n = bars.length;
+    bars.forEach((bar, i) => {
+      const active = level > ((i + 1) / n) * 0.85;
+      bar.style.height = active ? `${4 + Math.round(i * 13 / n)}px` : '3px';
+      bar.style.opacity = active ? '1' : '0.15';
+    });
+    _meterRaf = requestAnimationFrame(drawMicMeter);
+  }
+
+  // ── Small UI helpers ─────────────────────────────────────────────────────
+  function showSession() {
+    document.getElementById('setup').classList.add('hidden');
+    document.getElementById('session').classList.remove('hidden');
+    document.getElementById('console-toggle').style.display = 'inline-block';
+    document.getElementById('mixer-toggle').style.display = 'inline-block';
+    toggleConsole(true);
+    if (_tracks.length) toggleMixer(true);
+  }
+  function hideSession() { document.getElementById('session').classList.add('hidden'); document.getElementById('setup').classList.remove('hidden'); }
+  function setStartBtn(disabled, html) { const b = document.getElementById('start-btn'); b.disabled = disabled; b.innerHTML = html; }
+  function setConn(state, label) { document.getElementById('conn-dot').className = 'status-dot' + (state ? ' ' + state : ''); document.getElementById('conn-label').textContent = label; }
+  function attachVideo(id, track) { const el = document.getElementById(id); el.srcObject ? el.srcObject.addTrack(track) : (el.srcObject = new MediaStream([track])); }
+  function show(id) { document.getElementById(id).classList.remove('hidden'); }
+  function hide(id) { document.getElementById(id).classList.add('hidden'); }
+  function lastTool(text) { show('sb-tool'); document.getElementById('sb-tool-val').textContent = text; }
+  function truncate(s, n) { return s.length > n ? s.slice(0, n) + '…' : s; }
+
+  // Infer output mode when the LLM omits it: trig + no bitwise ops ⇒ floatbeat.
+  // (Sine/cosine voices interpreted as raw bytebeat sound broken; this rescues them.)
+  function guessMode(expr) {
+    return /\b(sin|cos|tan)\s*\(/.test(expr) && !/[&|^~]|<<|>>/.test(expr) ? 'floatbeat' : 'bytebeat';
+  }
+
+  // ── Tool-call console ──────────────────────────────────────────────────────
+  let _toolCallCount = 0;
+  const KNOWN_TOOLS = ['set_beat', 'load_preset', 'stop_beat', 'set_volume', 'save_beat', 'play_sequence', 'stop_sequence', 'set_track', 'remove_track', 'mute_track', 'clear_tracks'];
+
+  function toggleConsole(force) {
+    const el = document.getElementById('tool-console');
+    const showIt = force === undefined ? !el.classList.contains('show') : force;
+    el.classList.toggle('show', showIt);
+  }
+
+  function clearToolLog() {
+    _toolCallCount = 0;
+    document.getElementById('tc-count').textContent = '0';
+    document.getElementById('tool-log').innerHTML =
+      '<div class="tc-empty">Cleared — waiting for the next tool call…</div>';
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
+  }
+
+  function fmtArgs(name, args) {
+    args = args || {};
+    const pairs = [];
+    const add = (k, v) => { if (v !== undefined && v !== null && v !== '') pairs.push(`<span class="k">${k}</span>: <span class="v">${escapeHtml(v)}</span>`); };
+    if (name === 'set_beat')        { add('expr', args.expr); add('rate', args.sample_rate); add('mode', args.mode); }
+    else if (name === 'load_preset') { add('name', args.name); }
+    else if (name === 'set_volume')  { add('level', args.level); }
+    else if (name === 'save_beat')   { add('name', args.name); add('expr', args.expr); }
+    else if (name === 'play_sequence') { add('steps', Array.isArray(args.steps) ? args.steps.length : args.steps); add('loop', args.loop); }
+    else if (name === 'set_track')   { add('name', args.name); add('expr', args.expr); add('vol', args.volume); }
+    else if (name === 'remove_track') { add('name', args.name); }
+    else if (name === 'mute_track')  { add('name', args.name); add('muted', args.muted); }
+    else if (name === 'stop_beat' || name === 'stop_sequence' || name === 'clear_tracks') { /* no args */ }
+    else { Object.entries(args).forEach(([k, v]) => add(k, typeof v === 'object' ? JSON.stringify(v) : v)); }
+    return pairs.join('  ');
+  }
+
+  function logToolCall(name, args, source) {
+    const log = document.getElementById('tool-log');
+    if (!log) return;
+    const empty = log.querySelector('.tc-empty'); if (empty) empty.remove();
+
+    _toolCallCount++;
+    document.getElementById('tc-count').textContent = String(_toolCallCount);
+
+    const d  = new Date();
+    const ts = d.toTimeString().slice(0, 8) + '.' + String(d.getMilliseconds()).padStart(3, '0');
+    const srcIcon  = source === 'manual' ? '🎛' : '🎤';
+    const srcTitle = source === 'manual' ? 'manual deck' : 'DJ Charlie (voice)';
+    const cls = KNOWN_TOOLS.includes(name) ? name : 'unknown';
+    const argStr = fmtArgs(name, args);
+
+    const entry = document.createElement('div');
+    entry.className = 'tc-entry';
+    entry.innerHTML =
+      `<div class="tc-row1">` +
+        `<span class="tc-time">${ts}</span>` +
+        `<span class="tc-src" title="${srcTitle}">${srcIcon}</span>` +
+        `<span class="tc-name ${cls}">${escapeHtml(name)}</span>` +
+      `</div>` +
+      (argStr ? `<div class="tc-args">${argStr}</div>` : '');
+    log.appendChild(entry);
+    log.scrollTop = log.scrollHeight;
+
+    toggleConsole(true); // pop it open the moment something fires
+  }
+
+  // ── Draggable floating panels ──────────────────────────────────────────────
+  function makeDraggable(panel, handle) {
+    let dragging = false, ox = 0, oy = 0;
+    handle.addEventListener('pointerdown', e => {
+      if (e.target.closest('button')) return; // let buttons in the handle work
+      dragging = true;
+      const r = panel.getBoundingClientRect();
+      if (!panel.style.top) { panel.style.top = r.top + 'px'; panel.style.left = r.left + 'px'; panel.style.bottom = 'auto'; panel.style.right = 'auto'; }
+      ox = e.clientX - r.left; oy = e.clientY - r.top;
+      document.body.style.userSelect = 'none';
+      handle.setPointerCapture(e.pointerId); // keep events flowing even over iframes / off-window
+      e.preventDefault();
+    });
+    handle.addEventListener('pointermove', e => {
+      if (!dragging) return;
+      panel.style.left = Math.max(0, Math.min(e.clientX - ox, innerWidth - panel.offsetWidth)) + 'px';
+      panel.style.top  = Math.max(0, Math.min(e.clientY - oy, innerHeight - panel.offsetHeight)) + 'px';
+    });
+    const endDrag = e => {
+      if (!dragging) return;
+      dragging = false;
+      document.body.style.userSelect = '';
+      if (handle.hasPointerCapture(e.pointerId)) handle.releasePointerCapture(e.pointerId);
+    };
+    handle.addEventListener('pointerup', endDrag);
+    handle.addEventListener('pointercancel', endDrag);
+  }
+  makeDraggable(document.getElementById('video-panel'),  document.getElementById('replica-video-container'));
+  makeDraggable(document.getElementById('tool-console'), document.getElementById('tc-header'));
+  makeDraggable(document.getElementById('mixer'),        document.getElementById('mx-header'));
+
+  // ── Init ────────────────────────────────────────────────────────────────
+  buildPresetChips();
+  renderSaved();
+  renderSongList();
+  restoreTracks();
+  document.getElementById('expr-input').addEventListener('keydown', e => { if (e.key === 'Enter') deckPlay(); });
+  document.getElementById('api-key-input').addEventListener('keydown', e => { if (e.key === 'Enter') startSession(); });
+  try {
+    const k = localStorage.getItem('djc-api-key'); if (k) document.getElementById('api-key-input').value = k;
+    document.getElementById('persona-id-input').value = localStorage.getItem('djc-persona-id') || DEFAULT_PERSONA_ID;
+    const r = localStorage.getItem('djc-replica-id'); if (r) document.getElementById('replica-id-input').value = r;
+  } catch (_) {}
+</script>
+</body>
+</html>
