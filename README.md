@@ -6,15 +6,16 @@ A Tavus replica that DJs in a **Studio** — 16 playable **pads**, an on-screen
 sounds, plays them, and arranges a beat in real time; you can also play and edit
 everything by hand.
 
-A single static file does all the work:
+It deploys on **Cloudflare Pages** — a static front end plus one tiny Pages
+Function that holds the keys server-side:
 
-| File | Role |
+| Path | Role |
 |---|---|
-| `index.html` | The booth — Tavus conversation + Daily call + DJ Charlie video, the full-screen Studio, and the tool-call bridge that lets Charlie drive it. |
-
-`persona.json` is a reference copy of the DJ Charlie persona (system prompt +
-the Studio tool definitions); the in-app **“+ Create Charlie”** button posts an
-equivalent body to the Tavus API.
+| `public/index.html` | The booth — Daily call + DJ Charlie video, the full-screen Studio, and the tool-call bridge that lets Charlie drive it. |
+| `functions/api/conversation.js` | Pages Function. `POST /api/conversation` creates the Tavus conversation using a **server-held** `TAVUS_API_KEY` + `PERSONA_ID` — no secret ever reaches the browser. |
+| `persona.json` | The DJ Charlie persona config (system prompt + Studio tool definitions). The `api_key` is a `<CEREBRAS_API_KEY>` placeholder, injected at mint time. |
+| `scripts/mint-persona.mjs` | One-shot, run locally: mints/refreshes the persona on Tavus from `persona.json` and prints the `persona_id` to set as `PERSONA_ID`. |
+| `wrangler.toml` | Pages project config (output dir `public/`, functions in `functions/`). |
 
 ## 🎛 The Studio
 
@@ -65,30 +66,41 @@ write a 4-bar bassline at 100 BPM and loop it,”* then *“move that last note 
 or *“delete the third note.”*
 
 > ⚠️ **Charlie needs the Studio tools.** Tool definitions are attached to a persona
-> at creation time, so an older persona won't have them — click **“+ Create Charlie”**
-> on the start screen once to mint a persona with Studio control. (Playing the pads,
-> keyboard, and timeline **by hand** works with any persona.)
+> at creation time, so the deployed `PERSONA_ID` must point at a persona minted from
+> this repo's `persona.json` (run `npm run mint-persona`). (Playing the pads,
+> keyboard, and timeline **by hand** works regardless.)
 
 ## Run it locally
 
-It's a static file served over HTTP (needed for the AudioWorklet + mic
-permissions — opening `index.html` via `file://` will not work).
+The page needs the backend (`/api/conversation`) and HTTPS-equivalent context
+(AudioWorklet + mic) — so run it through Wrangler, which serves `public/` and the
+Pages Function together:
 
 ```bash
 cd ~/repos/dj_charlie
-npm start            # serves on http://localhost:5173 via `npx serve`
-# or:  python3 -m http.server 5173
+npm install                 # wrangler
+echo 'TAVUS_API_KEY="..."'  >  .dev.vars   # gitignored
+echo 'PERSONA_ID="p..."'    >> .dev.vars
+npm run dev                 # wrangler pages dev → http://localhost:8788
 ```
 
-Then open **http://localhost:5173** in Chrome/Edge/Firefox.
+`.dev.vars` feeds the local Function the same secrets the deployed project holds.
+Then open the printed URL in Chrome/Edge/Firefox.
 
-## First-time setup (in the app)
+### Minting the persona
 
-1. Paste your **Tavus API key** (from the [Tavus dashboard](https://platform.tavus.io)).
-2. Optionally set a **Replica ID** (defaults to the stock `r90bbd427f71`), then click
-   **“+ Create Charlie”** to mint a persona with the Studio tools — the new persona ID
-   auto-fills and is saved to `localStorage`.
-3. **Start the Set.** **Tap a pad once** to enable audio, then talk to Charlie:
+The persona (DJ Charlie + the Studio tools, on the Cerebras LLM) is created
+out-of-band, not from the browser. With `TAVUS_API_KEY` + `CEREBRAS_API_KEY` in
+`.env`:
+
+```bash
+npm run mint-persona        # prints a persona_id → set it as PERSONA_ID
+```
+
+## Using it
+
+1. **Start the Set** — the backend mints a conversation; no keys to paste.
+2. **Tap a pad once** to enable audio, then talk to Charlie:
    *“give me a trap kit,”* *“make the lead warmer,”* *“write a bassline and loop it,”*
    *“add a snare on the off-beats.”*
 
@@ -145,14 +157,28 @@ metallic, warm, bright, plucky, glitchy/8-bit.**
 
 ## Deploy
 
-Static hosting — no build step. Drop the repo into **Vercel / Netlify /
-Cloudflare Pages / GitHub Pages** (entry point `index.html`). The Tavus
-conversation is created **client-side** with the user's own API key, so there's
-no backend.
+Hosted on **Cloudflare Pages** at **https://dj.preview.platform.tavus.io**
+(project `dj-charlie`). No build step — Pages serves `public/` and bundles the
+Function in `functions/`.
 
-> ⚠️ The API key is entered in the browser and stored in `localStorage` for
-> convenience. Fine for a personal/internal tool; for a public deployment, proxy
-> conversation creation through a small backend so the key never reaches the client.
+```bash
+# one-time
+wrangler pages project create dj-charlie --production-branch main
+
+# secrets the Function reads at runtime
+wrangler pages secret put TAVUS_API_KEY --project-name dj-charlie
+wrangler pages secret put PERSONA_ID    --project-name dj-charlie   # from `npm run mint-persona`
+
+# deploy
+npm run deploy        # wrangler pages deploy
+```
+
+The custom domain `dj.preview.platform.tavus.io` is a proxied CNAME →
+`dj-charlie.pages.dev` in the `tavus.io` Cloudflare zone; Cloudflare provisions TLS.
+
+> ✅ No secret reaches the browser — the Tavus key and persona id live only in the
+> Function's environment. The Cerebras key lives only in the persona (server-side on
+> Tavus) and in the local `.env` used by `mint-persona`; it's never shipped.
 
 ## How control flows
 

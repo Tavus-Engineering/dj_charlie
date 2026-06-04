@@ -4,4 +4,7 @@ node_modules/
 # secrets
 .env
 .env.*
-env.js
+.dev.vars
+
+# wrangler / cloudflare pages
+.wrangler/

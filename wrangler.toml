@@ -1,0 +1,8 @@
+name = "dj-charlie"
+compatibility_date = "2025-06-01"
+pages_build_output_dir = "public"
+
+# Static site (public/index.html) + Pages Functions (functions/api/*).
+# Runtime secrets are NOT stored here — set them on the Pages project:
+#   TAVUS_API_KEY, PERSONA_ID  (used by functions/api/conversation.js)
+# For local `wrangler pages dev`, put the same keys in .dev.vars (gitignored).
