@@ -65,6 +65,16 @@ async function verifyAccessJwt(token, teamDomain, expectedAud) {
   return payload; // { email, ... }
 }
 
+// The Access JWT arrives either as the injected header or the CF_Authorization
+// cookie. On Pages the cookie is the reliable one.
+function getAccessToken(request) {
+  const header = request.headers.get('Cf-Access-Jwt-Assertion');
+  if (header) return header;
+  const cookie = request.headers.get('Cookie') || '';
+  const m = cookie.match(/(?:^|;\s*)CF_Authorization=([^;]+)/);
+  return m ? m[1] : null;
+}
+
 export async function onRequestPost({ request, env }) {
   if (!env.TAVUS_API_KEY) return json({ error: 'Server is missing TAVUS_API_KEY.' }, 500);
   if (!env.PERSONA_ID) return json({ error: 'Server is missing PERSONA_ID.' }, 500);
@@ -73,7 +83,7 @@ export async function onRequestPost({ request, env }) {
   if (!env.ACCESS_AUD || !env.ACCESS_TEAM_DOMAIN) {
     return json({ error: 'Access control is not configured; conversation creation is disabled.' }, 503);
   }
-  const token = request.headers.get('Cf-Access-Jwt-Assertion');
+  const token = getAccessToken(request);
   if (!token) return json({ error: 'Unauthorized.' }, 401);
 
   let claims;
