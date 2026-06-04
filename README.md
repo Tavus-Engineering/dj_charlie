@@ -78,13 +78,18 @@ Pages Function together:
 
 ```bash
 cd ~/repos/dj_charlie
-npm install                 # wrangler
-echo 'TAVUS_API_KEY="..."'  >  .dev.vars   # gitignored
-echo 'PERSONA_ID="p..."'    >> .dev.vars
-npm run dev                 # wrangler pages dev → http://localhost:8788
+npm install                            # wrangler
+cat > .dev.vars <<'VARS'               # gitignored
+TAVUS_API_KEY="<your tavus key>"
+PERSONA_ID="p3a659ea8fce"
+DEV_BYPASS_ACCESS="1"
+VARS
+npm run dev                            # wrangler pages dev → http://localhost:8788
 ```
 
-`.dev.vars` feeds the local Function the same secrets the deployed project holds.
+`.dev.vars` feeds the local Function its secrets. `DEV_BYPASS_ACCESS=1` skips the
+Cloudflare Access gate (there's no Access JWT on localhost) — it lives **only**
+in this local file and is never set on the deployed project, which stays gated.
 Then open the printed URL in Chrome/Edge/Firefox.
 
 ### Minting the persona

@@ -79,22 +79,27 @@ export async function onRequestPost({ request, env }) {
   if (!env.TAVUS_API_KEY) return json({ error: 'Server is missing TAVUS_API_KEY.' }, 500);
   if (!env.PERSONA_ID) return json({ error: 'Server is missing PERSONA_ID.' }, 500);
 
-  // Fail closed: no Access config → no access.
-  if (!env.ACCESS_AUD || !env.ACCESS_TEAM_DOMAIN) {
-    return json({ error: 'Access control is not configured; conversation creation is disabled.' }, 503);
-  }
-  const token = getAccessToken(request);
-  if (!token) return json({ error: 'Unauthorized.' }, 401);
+  // DEV_BYPASS_ACCESS skips the Access gate for `wrangler pages dev` on
+  // localhost (where there is no Access JWT). Set it ONLY in the local,
+  // gitignored .dev.vars — it is never set on the deployed project.
+  if (env.DEV_BYPASS_ACCESS !== '1') {
+    // Fail closed: no Access config → no access.
+    if (!env.ACCESS_AUD || !env.ACCESS_TEAM_DOMAIN) {
+      return json({ error: 'Access control is not configured; conversation creation is disabled.' }, 503);
+    }
+    const token = getAccessToken(request);
+    if (!token) return json({ error: 'Unauthorized.' }, 401);
 
-  let claims;
-  try {
-    claims = await verifyAccessJwt(token, env.ACCESS_TEAM_DOMAIN, env.ACCESS_AUD);
-  } catch (err) {
-    return json({ error: 'Unauthorized: ' + err.message }, 401);
-  }
-  const allow = (env.ALLOWED_EMAIL_DOMAIN || '').trim().toLowerCase();
-  if (allow && !String(claims.email || '').toLowerCase().endsWith('@' + allow)) {
-    return json({ error: 'Forbidden.' }, 403);
+    let claims;
+    try {
+      claims = await verifyAccessJwt(token, env.ACCESS_TEAM_DOMAIN, env.ACCESS_AUD);
+    } catch (err) {
+      return json({ error: 'Unauthorized: ' + err.message }, 401);
+    }
+    const allow = (env.ALLOWED_EMAIL_DOMAIN || '').trim().toLowerCase();
+    if (allow && !String(claims.email || '').toLowerCase().endsWith('@' + allow)) {
+      return json({ error: 'Forbidden.' }, 403);
+    }
   }
 
   let res;
