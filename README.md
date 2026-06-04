@@ -157,7 +157,7 @@ metallic, warm, bright, plucky, glitchy/8-bit.**
 
 ## Deploy
 
-Hosted on **Cloudflare Pages** at **https://dj.preview.platform.tavus.io**
+Hosted on **Cloudflare Pages** at **https://dj.tavus-preview.io**
 (project `dj-charlie`). No build step — Pages serves `public/` and bundles the
 Function in `functions/`.
 
@@ -173,8 +173,13 @@ wrangler pages secret put PERSONA_ID    --project-name dj-charlie   # from `npm 
 npm run deploy        # wrangler pages deploy
 ```
 
-The custom domain `dj.preview.platform.tavus.io` is a proxied CNAME →
-`dj-charlie.pages.dev` in the `tavus.io` Cloudflare zone; Cloudflare provisions TLS.
+The custom domain `dj.tavus-preview.io` is a proxied CNAME →
+`dj-charlie.pages.dev` in the `tavus-preview.io` Cloudflare zone; Cloudflare provisions TLS.
+
+Access is gated by **Cloudflare Access** (Zero Trust) on `dj.tavus-preview.io`,
+restricted to `@tavus.io`. The Function also verifies the Access JWT, so the
+`dj-charlie.pages.dev` hostname (which Access does not front) stays locked too.
+Set on the Pages project: `ACCESS_AUD`, `ACCESS_TEAM_DOMAIN`, `ALLOWED_EMAIL_DOMAIN`.
 
 > ✅ No secret reaches the browser — the Tavus key and persona id live only in the
 > Function's environment. The Cerebras key lives only in the persona (server-side on
