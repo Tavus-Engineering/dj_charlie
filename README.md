@@ -1,118 +1,158 @@
-# 🎧 DJ Charlie — Live Bytebeat
+# 🎹 DJ Charlie — Live Studio
 
-A Tavus replica that DJs **bytebeat** — music generated from a single one-line
-JavaScript expression `f(t)`. Talk to Charlie and he composes and morphs
-algorithmic music in real time, the same way the
-[`diagnostics-embed`](../conversation-visualizer/diagnostics-embed) lets a replica
-drive a diagnostics viewer.
+A Tavus replica that DJs in a **Studio** — 16 playable **pads**, an on-screen
+**keyboard**, and a **piano-roll timeline**, all powered by
+**[Tone.js](https://tonejs.github.io/)**. Talk to Charlie and he composes the
+sounds, plays them, and arranges a beat in real time; you can also play and edit
+everything by hand.
 
-Two static files do all the work:
+A single static file does all the work:
 
 | File | Role |
 |---|---|
-| `index.html` | The booth — Tavus conversation + Daily call + DJ Charlie video, a control deck, and the tool-call → player bridge. |
-| `player.html` | A self-hosted bytebeat engine (AudioWorklet) embedded in an iframe. Driven live by the booth via `postMessage`; also loads beats from URL params standalone. |
+| `index.html` | The booth — Tavus conversation + Daily call + DJ Charlie video, the full-screen Studio, and the tool-call bridge that lets Charlie drive it. |
 
-The public bytebeat sites can't be remote-controlled (no postMessage API + autoplay
-restrictions), so the player is self-hosted. See `bytebeat-syntax.txt` for the full
-expression / URL / tool reference.
+`persona.json` is a reference copy of the DJ Charlie persona (system prompt +
+the Studio tool definitions); the in-app **“+ Create Charlie”** button posts an
+equivalent body to the Tavus API.
 
-## Tracks (the mixer)
+## 🎛 The Studio
 
-The **🎚 Mixer** panel layers multiple bytebeat voices that play **at the same
-time** and are summed by the engine — a bass track, a kick, a hi-hat, a guitar, a
-lead, etc. (distinct from the sequencer, which plays beats one-after-another).
+The Studio fills the screen during a set. Three sections, top to bottom:
 
-- **Add** a track from an instrument template (`+ bass`, `+ kick`, `+ hi-hat`,
-  `+ snare`, `+ guitar`, `+ lead`, `+ blank`) — each starts from an editable
-  starter formula.
-- Per-track strip: editable **name**, **expression**, **rate**, **mode**, **M**ute,
-  **S**olo, and a **volume** slider. Edits apply live (expression changes crossfade
-  in the engine, so no clicks).
-- The mix auto-saves to `localStorage` (`djc-tracks`) and is restored on the next
-  session.
-- **DJ Charlie** lays down tracks by voice: `set_track({name, expr, …})` (he'll fire
-  several at once — "give me a bass, a kick, a hat and a lead"), `remove_track`,
-  `mute_track`, `clear_tracks`. The single deck beat / `set_beat` is the separate
-  **lead** voice and mixes in alongside the tracks.
+### Pads — the instruments
 
-> Auto-mode: if an expression uses `sin`/`cos`/`tan` with no bitwise ops and no mode
-> is given, it's treated as **floatbeat** automatically (so tonal voices sound right
-> even when the mode is omitted).
+- **16 pads** in a 4×4 grid. Each pad holds one *sound*, which is **either** a
+  Tone.js synth (`MembraneSynth` kick, `MetalSynth` hat, `NoiseSynth` snare/clap,
+  `FM`/`AMSynth` leads, `PluckSynth`, `Synth`) **or** a **bytebeat** expression.
+- **Tap** a pad to play it; tapping also **selects** it for the keyboard. The **✎**
+  corner opens the editor: kind (synth / bytebeat), synth type or expression,
+  ADSR envelope, volume, and base note.
+- Pads persist to `localStorage` (`djc-pads`); a small starter kit is seeded on
+  first run. The first tap also unlocks the Studio audio (browser autoplay rule).
 
-## Saving beats & building songs
+> **Bytebeat pads** are a per-sample expression in terms of `t` (**seconds** since
+> note-on), `f` (the note's frequency in Hz), `sr` (sample rate), and `i` (sample
+> index). Write **pitched** sounds in terms of `f`, e.g. `sin(2*PI*f*t)*0.6`;
+> **drums ignore `f`**, e.g. a kick `sin(2*PI*60*t)*exp(-t*8)`. A
+> `Tone.AmplitudeEnvelope` gives every note its attack/release.
 
-- **Save a formula** — the **💾 Save** button on the deck stores the current
-  expression (with its rate + mode) to your **crate** in browser `localStorage`
-  (`djc-crate`). Saved beats show up as purple chips in the **Saved** row; click to
-  load, click the ✕ to delete. They persist across sessions and survive refreshes.
-- **Sequence beats into a song** — the **Song** row is a step sequencer. Set a
-  per-step duration, hit **+ Add** to append the current beat, then **▶ Play** to
-  run the steps in order (each plays for its duration, crossfading into the next).
-  **🔁 Loop** repeats the song; **Clear** empties it. **💾 Song** saves the whole
-  arrangement to `localStorage` (`djc-songs`); reload it from the **Load song…**
-  dropdown.
-- **DJ Charlie does it too** — by voice. He has tools to `save_beat` ("save this as
-  *dark bass*"), `play_sequence` ("build me an intro, a drop, then a breakdown, on
-  loop"), and `stop_sequence`. Song steps can reference a saved/crate beat by name
-  or supply a fresh expression. Every call shows up in the Tool Calls console.
+### Keyboard
+
+A chromatic on-screen keyboard plays the **selected** pad across pitches; the
+`− 4 +` control shifts octave. Great for auditioning a pad melodically.
+
+### Timeline — the piano-roll
+
+Set a **BPM** and a **bars** loop length, then click in the grid to drop notes
+(drag to move/re-pitch, drag the right edge to resize, double-click to delete).
+**▶ Play** loops the arrangement. Each note references a pad + pitch +
+start/length (in **beats**) and persists to `localStorage` (`djc-roll`).
+
+## DJ Charlie does it all by voice
+
+Charlie drives the Studio with tool calls (every call shows in the **Tool Calls**
+console):
+
+- **Sounds** — `define_pad` (one pad) and `define_pads` (a whole kit at once),
+  `trigger_pad` (audition), `clear_pad`.
+- **Arrangement** — `set_bpm`, `create_note` / `create_notes`, `update_note`,
+  `delete_note`, `clear_notes`, `play_timeline` / `stop_timeline`.
+
+`create_note` returns a stable id (e.g. `n7`) so Charlie can edit or delete that
+exact note later. Try: *“make pad 0 a punchy kick and pad 1 a bright lead, then
+write a 4-bar bassline at 100 BPM and loop it,”* then *“move that last note later”*
+or *“delete the third note.”*
+
+> ⚠️ **Charlie needs the Studio tools.** Tool definitions are attached to a persona
+> at creation time, so an older persona won't have them — click **“+ Create Charlie”**
+> on the start screen once to mint a persona with Studio control. (Playing the pads,
+> keyboard, and timeline **by hand** works with any persona.)
 
 ## Run it locally
 
-It's just static files served over HTTP (needed for the AudioWorklet + mic
+It's a static file served over HTTP (needed for the AudioWorklet + mic
 permissions — opening `index.html` via `file://` will not work).
 
 ```bash
 cd ~/repos/dj_charlie
 npm start            # serves on http://localhost:5173 via `npx serve`
+# or:  python3 -m http.server 5173
 ```
 
 Then open **http://localhost:5173** in Chrome/Edge/Firefox.
 
-Any static server works just as well, e.g.:
-
-```bash
-python3 -m http.server 5173      # http://localhost:5173
-```
-
 ## First-time setup (in the app)
 
 1. Paste your **Tavus API key** (from the [Tavus dashboard](https://platform.tavus.io)).
-2. A pre-created DJ Charlie persona (`p8c22c833e43`, with the bytebeat tools
-   defined) is filled in by default. To make your own, optionally set a **Replica
-   ID** (defaults to the stock `r90bbd427f71`) then click **“+ Create Charlie”** —
-   the new persona ID auto-fills and is saved to `localStorage`.
-3. *(Optional)* type an **opening beat**, e.g. `t*(t>>5|t>>8)`.
-4. **Start the Set.** When the player loads, **tap it once** to enable audio
-   (browser autoplay rule), then talk to Charlie: *“give me something darker,”*
-   *“play the crowd track,”* *“faster,” “drop it.”*
-
-You can also drive it by hand from the control deck at the bottom (expression
-box, sample rate, mode, presets, volume).
+2. Optionally set a **Replica ID** (defaults to the stock `r90bbd427f71`), then click
+   **“+ Create Charlie”** to mint a persona with the Studio tools — the new persona ID
+   auto-fills and is saved to `localStorage`.
+3. **Start the Set.** **Tap a pad once** to enable audio, then talk to Charlie:
+   *“give me a trap kit,”* *“make the lead warmer,”* *“write a bassline and loop it,”*
+   *“add a snare on the off-beats.”*
 
 > **LLM:** DJ Charlie runs on **Cerebras-hosted Kimi K2** as a custom
 > OpenAI-compatible LLM — `model: moonshotai-kimi-k2.6`,
 > `base_url: https://api.cerebras.ai/v1`. The persona stores the Cerebras API
-> key server-side (set via `.env` → `CEREBRAS_API_KEY` when creating/patching).
-> Note: **Cerebras** (fast-inference API) is *not* Cerebrium (serverless-GPU
-> platform) — and Kimi is not a Tavus-managed alias on Cerebras, hence the
-> custom `base_url`/`api_key`. The custom-LLM path is handled by
-> `request-handler` (`conversation_service.py`) and `realtime-replica`
-> (`openai_compatible_llm.py`).
+> key server-side (set via `.env` → `CEREBRAS_API_KEY` when creating). Note:
+> **Cerebras** (fast-inference API) is *not* Cerebrium (serverless-GPU platform).
+
+## Talking to Charlie — a primer of terms
+
+Charlie doesn't need exact words — these phrases just map cleanly onto what the
+Studio can do. Mix and match.
+
+### Compose sounds (pads)
+
+- **“make pad 0 a punchy kick”** → defines one pad's instrument
+- **“give me a full drum kit / a set of sounds”** → composes a whole bank of pads at once
+- **“make pad 5 a bright lead / warm bass / plucky”** → picks a synth + envelope to match
+- **“play pad 3” · “clear pad 7”** → auditions / empties a pad
+
+### Sound flavors
+
+Each pad is a Tone.js synth or a pitched bytebeat expression:
+
+| Synth | Good for |
+|---|---|
+| `MembraneSynth` | kicks, toms |
+| `MetalSynth` | hats, cymbals |
+| `NoiseSynth` | snares, claps |
+| `FMSynth` / `AMSynth` | rich leads, basses, stabs |
+| `PluckSynth` | plucky strings |
+| `Synth` | basic tone |
+| **bytebeat `f(t)`** | glitchy / 8-bit timbres, written in `t`, `f` |
+
+Descriptive words steer the envelope + synth choice: **punchy, boomy, clicky,
+metallic, warm, bright, plucky, glitchy/8-bit.**
+
+### Arrange a beat (timeline)
+
+- **“write a 4-bar bassline at 100 BPM”** → sets tempo + drops notes
+- **“four-on-the-floor kick, off-beat hats”** → lays a drum pattern across pads
+- **“play / loop it” · “stop”** → runs / stops the arrangement
+- **“move / shorten / delete that note” · “clear the hats”** → edits notes by id, or clears a pad
+
+### Play it yourself
+
+- **Tap a pad** to play its sound (and select it for the keyboard).
+- **Keyboard** plays the selected pad; `− 4 +` shifts octave.
+- **Timeline**: click to add a note, drag to move/resize, double-click to delete.
+
+> **Tip:** comparative tweaks work best once a pad is playing — *“punchier,”*
+> *“brighter,”* *“more swing,”* *“now add a snare.”*
 
 ## Deploy
 
-Static hosting — no build step. Point any of these at the repo root:
-
-- **Vercel / Netlify / Cloudflare Pages / GitHub Pages** — drop the repo in, no
-  config needed (`index.html` is the entry point).
-- The Tavus conversation is created **client-side** with the user's own API key,
-  so there's no backend.
+Static hosting — no build step. Drop the repo into **Vercel / Netlify /
+Cloudflare Pages / GitHub Pages** (entry point `index.html`). The Tavus
+conversation is created **client-side** with the user's own API key, so there's
+no backend.
 
 > ⚠️ The API key is entered in the browser and stored in `localStorage` for
-> convenience. This is fine for a personal/internal tool; for a public deployment,
-> proxy conversation creation through a small backend so the key never reaches the
-> client.
+> convenience. Fine for a personal/internal tool; for a public deployment, proxy
+> conversation creation through a small backend so the key never reaches the client.
 
 ## How control flows
 
@@ -120,11 +160,12 @@ Static hosting — no build step. Point any of these at the repo root:
 user speech ─▶ DJ Charlie (Tavus LLM) ─▶ conversation.tool_call (Daily app-message)
                                               │
               index.html onAppMessage ◀───────┘
-                     │  set_beat / load_preset / stop_beat / set_volume
+                     │  define_pad(s) / trigger_pad / set_bpm /
+                     │  create_note(s) / update_note / play_timeline …
                      ▼
-              postMessage ─▶ player.html (AudioWorklet) ─▶ 🔊
+              Tone.js engine (synths + pitched-bytebeat worklet) ─▶ 🔊
 ```
 
-The booth feeds Charlie his tool instructions and the preset crate via
-`conversation.append_llm_context`, and narrates state changes back to him the same
-way — so he always knows what's currently playing.
+The booth feeds Charlie his tool instructions via
+`conversation.append_llm_context` and narrates state changes back to him, so he
+always knows the kit and the arrangement he's working with.
