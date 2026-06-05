@@ -389,7 +389,7 @@
     .st-note b { color: #ff86c8; }
 
     .tc-name.define_pad, .tc-name.define_pads, .tc-name.trigger_pad, .tc-name.clear_pad,
-    .tc-name.set_bpm, .tc-name.create_note, .tc-name.create_notes, .tc-name.update_note,
+    .tc-name.set_bpm, .tc-name.set_bars, .tc-name.create_note, .tc-name.create_notes, .tc-name.update_note,
     .tc-name.delete_note, .tc-name.clear_notes, .tc-name.play_timeline, .tc-name.stop_timeline { color: #ff86c8; }
 
     /* ── Talking indicators ── */
@@ -428,6 +428,22 @@
     .think-badge .dots i:nth-child(2){ animation-delay: 0.2s; }
     .think-badge .dots i:nth-child(3){ animation-delay: 0.4s; }
     @keyframes thinkDot { 0%,100%{ opacity: 0.3; transform: translateY(0); } 50%{ opacity: 1; transform: translateY(-2px); } }
+
+    /* Building (replica is applying tool calls — pads/notes/playback landing) */
+    #replica-video-container.building { box-shadow: inset 0 0 0 2px rgba(255,209,102,0.5), 0 0 18px rgba(255,209,102,0.35); }
+    .build-badge {
+      position: absolute; top: 7px; right: 7px; z-index: 5;
+      display: none; align-items: center; gap: 5px;
+      padding: 3px 9px; border-radius: 999px; font-size: 10px; font-weight: 700;
+      letter-spacing: 0.4px; background: rgba(255,209,102,0.16); border: 1px solid rgba(255,209,102,0.45);
+      color: #ffd166; backdrop-filter: blur(3px);
+    }
+    .build-badge.show { display: inline-flex; }
+    .build-badge .blocks { display: inline-flex; gap: 2px; align-items: flex-end; height: 9px; }
+    .build-badge .blocks i { width: 2px; height: 9px; background: currentColor; border-radius: 1px; opacity: 0.35; animation: buildBlk 0.9s ease-in-out infinite; }
+    .build-badge .blocks i:nth-child(2){ animation-delay: 0.15s; }
+    .build-badge .blocks i:nth-child(3){ animation-delay: 0.3s; }
+    @keyframes buildBlk { 0%,100%{ opacity: 0.3; } 50%{ opacity: 1; } }
 
     #mic-meter.talking { background: rgba(56,232,200,0.12); }
     #user-talk-tag {
@@ -611,6 +627,9 @@
         </div>
         <div id="replica-thinking-badge" class="think-badge">
           <span class="dots"><i></i><i></i><i></i></span> Charlie&rsquo;s thinking
+        </div>
+        <div id="replica-building-badge" class="build-badge">
+          <span class="blocks"><i></i><i></i><i></i></span> Charlie&rsquo;s building
         </div>
         <div id="replica-placeholder">
           <div class="avatar-ring">&#127911;</div>
@@ -868,7 +887,7 @@
 
 - Compose a pad with define_pad({pad, kind, ...}). kind:"tone" uses a Tone.js synth (synth in Synth, MembraneSynth=kick, MetalSynth=hat/cymbal, NoiseSynth=snare/clap, FMSynth/AMSynth=rich leads, PluckSynth=plucky) with optional options + env{attack,decay,sustain,release}. kind:"bytebeat" uses an expression in terms of t (SECONDS since note-on), f (note frequency in Hz), sr, i (sample index). For a PITCHED sound write it in terms of f, e.g. sin(2*PI*f*t)*0.6 (clean tone) or ((f*t)%1*2-1)*0.4 (saw). For DRUMS ignore f, e.g. a kick sin(2*PI*60*t)*exp(-t*8).
 - Compose a whole kit in ONE call with define_pads({pads:[...]}). Audition a pad with trigger_pad({pad, note?}). Empty one with clear_pad({pad}).
-- The TIMELINE plays notes at a tempo: set_bpm({bpm}); times are in BEATS (4 beats = 1 bar). The loop is currently ${bars} bars (${beats} beats, from beat 0 to ${beats}) — write patterns that fill the whole ${bars}-bar loop unless asked otherwise. Add a note with create_note({pad, pitch, start, length, velocity?}) — it RETURNS an id like "n7"; remember ids you create so you can edit/delete them. Write a whole phrase at once with create_notes({notes:[...]}). Edit with update_note({id, ...}), remove with delete_note({id}), or clear_notes({pad?}). Play/stop with play_timeline({loop?}) / stop_timeline().
+- The TIMELINE plays notes at a tempo: set_bpm({bpm}); times are in BEATS (4 beats = 1 bar). The loop is currently ${bars} bars (${beats} beats, from beat 0 to ${beats}) — write patterns that fill the whole ${bars}-bar loop unless asked otherwise. Change the loop length with set_bars({bars}) (1-16 bars) when the user wants a longer/shorter pattern. Add a note with create_note({pad, pitch, start, length, velocity?}) — it RETURNS an id like "n7"; remember ids you create so you can edit/delete them. Write a whole phrase at once with create_notes({notes:[...]}). Edit with update_note({id, ...}), remove with delete_note({id}), or clear_notes({pad?}). Play/stop with play_timeline({loop?}) / stop_timeline().
 - Workflow: lay down a kit (define_pads), then a pattern (create_notes referencing pad ids and pitches like "C2") that spans all ${bars} bars, set_bpm, and play_timeline. Keep spoken replies to one short hype line. If nothing plays, tell the user to tap a pad once to enable the Studio audio (browser autoplay rule).`;
     callObject.sendAppMessage({
       message_type: 'conversation',
@@ -1061,11 +1080,11 @@
     }
   }
 
-  let _replicaSpeaking = false, _userSpeaking = false, _replicaThinking = false;
+  let _replicaSpeaking = false, _userSpeaking = false, _replicaThinking = false, _replicaBuilding = false;
   function refreshTalkStatus() {
     const hs = document.getElementById('header-status');
     if (!hs || document.getElementById('session').classList.contains('hidden')) return;
-    hs.textContent = _replicaSpeaking ? 'Charlie is talking…' : _replicaThinking ? 'Charlie is thinking…' : _userSpeaking ? 'Listening…' : 'On air';
+    hs.textContent = _replicaSpeaking ? 'Charlie is talking…' : _replicaBuilding ? 'Charlie is building…' : _replicaThinking ? 'Charlie is thinking…' : _userSpeaking ? 'Listening…' : 'On air';
   }
   function setReplicaSpeaking(on) {
     _replicaSpeaking = on;
@@ -1081,6 +1100,23 @@
     document.getElementById('replica-video-container')?.classList.toggle('thinking', on);
     document.getElementById('replica-thinking-badge')?.classList.toggle('show', on);
     refreshTalkStatus();
+  }
+  // "Building" bridges the gap the user feels: Charlie stops thinking and talks,
+  // but the tool calls that actually add the pads/beats land a beat or two later.
+  // Each tool call relights the badge and re-arms a short timer, so it stays on
+  // through a burst of actions and clears once the Studio settles.
+  function setReplicaBuilding(on) {
+    _replicaBuilding = on;
+    if (on) setReplicaThinking(false);   // acting supersedes "still thinking"
+    document.getElementById('replica-video-container')?.classList.toggle('building', on);
+    document.getElementById('replica-building-badge')?.classList.toggle('show', on);
+    refreshTalkStatus();
+  }
+  let _buildBadgeT = 0;
+  function markBuilding() {
+    setReplicaBuilding(true);
+    clearTimeout(_buildBadgeT);
+    _buildBadgeT = setTimeout(() => setReplicaBuilding(false), 1600);
   }
   function setUserSpeaking(on) {
     _userSpeaking = on;
@@ -1120,6 +1156,12 @@
     else if (name === 'set_bpm') {
       setBpm(args.bpm); toggleStudio(true);
       lastTool(`set_bpm(${_roll.bpm})`);
+    }
+    else if (name === 'set_bars') {
+      setLoopBars(args.bars); toggleStudio(true);
+      const bars = Math.max(1, Math.round(_roll.loopBeats / 4));
+      lastTool(`set_bars(${bars})`);
+      tellCharlie(`Timeline is now ${bars} bars (${_roll.loopBeats} beats).`);
     }
     else if (name === 'create_note') {
       const id = addNote(args); toggleStudio(true);
@@ -1412,7 +1454,7 @@ ${noteBlock}`;
 
   // ── Tool-call console ──────────────────────────────────────────────────────
   let _toolCallCount = 0;
-  const KNOWN_TOOLS = ['define_pad', 'define_pads', 'trigger_pad', 'clear_pad', 'set_bpm', 'create_note', 'create_notes', 'update_note', 'delete_note', 'clear_notes', 'play_timeline', 'stop_timeline'];
+  const KNOWN_TOOLS = ['define_pad', 'define_pads', 'trigger_pad', 'clear_pad', 'set_bpm', 'set_bars', 'create_note', 'create_notes', 'update_note', 'delete_note', 'clear_notes', 'play_timeline', 'stop_timeline'];
 
   function toggleConsole(force) {
     const el = document.getElementById('tool-console');
@@ -1528,6 +1570,7 @@ ${noteBlock}`;
     else if (name === 'trigger_pad') { add('pad', args.pad); add('note', args.note); }
     else if (name === 'clear_pad')   { add('pad', args.pad); }
     else if (name === 'set_bpm')     { add('bpm', args.bpm); }
+    else if (name === 'set_bars')    { add('bars', args.bars); }
     else if (name === 'create_note') { add('pad', args.pad); add('pitch', args.pitch); add('start', args.start); add('len', args.length); }
     else if (name === 'create_notes'){ add('notes', Array.isArray(args.notes) ? args.notes.length : args.notes); }
     else if (name === 'update_note') { add('id', args.id); add('pitch', args.pitch); add('start', args.start); add('len', args.length); }

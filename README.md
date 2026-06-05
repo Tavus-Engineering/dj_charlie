@@ -57,8 +57,9 @@ console):
 
 - **Sounds** — `define_pad` (one pad) and `define_pads` (a whole kit at once),
   `trigger_pad` (audition), `clear_pad`.
-- **Arrangement** — `set_bpm`, `create_note` / `create_notes`, `update_note`,
-  `delete_note`, `clear_notes`, `play_timeline` / `stop_timeline`.
+- **Arrangement** — `set_bpm`, `set_bars` (loop length, 1–16), `create_note` /
+  `create_notes`, `update_note`, `delete_note`, `clear_notes`,
+  `play_timeline` / `stop_timeline`.
 
 `create_note` returns a stable id (e.g. `n7`) so Charlie can edit or delete that
 exact note later. Try: *“make pad 0 a punchy kick and pad 1 a bright lead, then
@@ -81,7 +82,7 @@ cd ~/repos/dj_charlie
 npm install                            # wrangler
 cat > .dev.vars <<'VARS'               # gitignored
 TAVUS_API_KEY="<your tavus key>"
-PERSONA_ID="p3a659ea8fce"
+PERSONA_ID="p235b2543f75"
 DEV_BYPASS_ACCESS="1"
 VARS
 npm run dev                            # wrangler pages dev → http://localhost:8788
@@ -196,7 +197,7 @@ Set on the Pages project: `ACCESS_AUD`, `ACCESS_TEAM_DOMAIN`, `ALLOWED_EMAIL_DOM
 user speech ─▶ DJ Charlie (Tavus LLM) ─▶ conversation.tool_call (Daily app-message)
                                               │
               index.html onAppMessage ◀───────┘
-                     │  define_pad(s) / trigger_pad / set_bpm /
+                     │  define_pad(s) / trigger_pad / set_bpm / set_bars /
                      │  create_note(s) / update_note / play_timeline …
                      ▼
               Tone.js engine (synths + pitched-bytebeat worklet) ─▶ 🔊
