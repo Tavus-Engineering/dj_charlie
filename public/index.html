@@ -702,7 +702,7 @@
           <span>Timeline</span>
           <span class="st-hint">
             BPM <input id="roll-bpm" class="st-in num" type="number" min="40" max="240" value="120" onchange="setBpm(this.value)">
-            bars <input id="roll-bars" class="st-in num" type="number" min="1" max="16" value="2" onchange="setLoopBars(this.value)">
+            bars <input id="roll-bars" class="st-in num" type="number" min="1" max="16" value="8" onchange="setLoopBars(this.value)">
             <button class="deck-btn sm go" onclick="playTimeline(true)">&#9654; Play</button>
             <button class="deck-btn sm stop" onclick="stopTimeline()">&#9632;</button>
             <button class="deck-btn sm" onclick="clearNotes()">Clear notes</button>
@@ -861,13 +861,15 @@
 
   function injectToolContext() {
     if (!callObject || !tavusConversationId) return;
+    const bars  = Math.max(1, Math.round(_roll.loopBeats / 4));
+    const beats = _roll.loopBeats;
     const text =
 `You are DJ Charlie, building beats in a STUDIO on screen via tools: 16 PADS (ids 0-15), an on-screen keyboard, and a piano-roll TIMELINE. Each pad holds one SOUND that can be played at any pitch and arranged on the timeline.
 
 - Compose a pad with define_pad({pad, kind, ...}). kind:"tone" uses a Tone.js synth (synth in Synth, MembraneSynth=kick, MetalSynth=hat/cymbal, NoiseSynth=snare/clap, FMSynth/AMSynth=rich leads, PluckSynth=plucky) with optional options + env{attack,decay,sustain,release}. kind:"bytebeat" uses an expression in terms of t (SECONDS since note-on), f (note frequency in Hz), sr, i (sample index). For a PITCHED sound write it in terms of f, e.g. sin(2*PI*f*t)*0.6 (clean tone) or ((f*t)%1*2-1)*0.4 (saw). For DRUMS ignore f, e.g. a kick sin(2*PI*60*t)*exp(-t*8).
 - Compose a whole kit in ONE call with define_pads({pads:[...]}). Audition a pad with trigger_pad({pad, note?}). Empty one with clear_pad({pad}).
-- The TIMELINE plays notes at a tempo: set_bpm({bpm}); times are in BEATS (4 beats = 1 bar). Add a note with create_note({pad, pitch, start, length, velocity?}) — it RETURNS an id like "n7"; remember ids you create so you can edit/delete them. Write a whole phrase at once with create_notes({notes:[...]}). Edit with update_note({id, ...}), remove with delete_note({id}), or clear_notes({pad?}). Play/stop with play_timeline({loop?}) / stop_timeline().
-- Workflow: lay down a kit (define_pads), then a pattern (create_notes referencing pad ids and pitches like "C2"), set_bpm, and play_timeline. Keep spoken replies to one short hype line. If nothing plays, tell the user to tap a pad once to enable the Studio audio (browser autoplay rule).`;
+- The TIMELINE plays notes at a tempo: set_bpm({bpm}); times are in BEATS (4 beats = 1 bar). The loop is currently ${bars} bars (${beats} beats, from beat 0 to ${beats}) — write patterns that fill the whole ${bars}-bar loop unless asked otherwise. Add a note with create_note({pad, pitch, start, length, velocity?}) — it RETURNS an id like "n7"; remember ids you create so you can edit/delete them. Write a whole phrase at once with create_notes({notes:[...]}). Edit with update_note({id, ...}), remove with delete_note({id}), or clear_notes({pad?}). Play/stop with play_timeline({loop?}) / stop_timeline().
+- Workflow: lay down a kit (define_pads), then a pattern (create_notes referencing pad ids and pitches like "C2") that spans all ${bars} bars, set_bpm, and play_timeline. Keep spoken replies to one short hype line. If nothing plays, tell the user to tap a pad once to enable the Studio audio (browser autoplay rule).`;
     callObject.sendAppMessage({
       message_type: 'conversation',
       event_type:   'conversation.append_llm_context',
@@ -1947,14 +1949,14 @@ ${noteBlock}`;
   const MIN_LANE_H = 7, MAX_LANE_H = 12;   // lane height is fit to the panel, clamped so notes stay grabbable
   let LANE_H = MAX_LANE_H;    // px per pitch lane — recomputed in renderRoll to pack all lanes into the timeline height
   let BEAT_W = MIN_BEAT_W;   // px per beat — recomputed in renderRoll to stretch the loop across the timeline width
-  let _roll = { bpm: 120, loopBeats: 8, _noteSeq: 0, notes: [] };
+  let _roll = { bpm: 120, loopBeats: 32, _noteSeq: 0, notes: [] };  // default: 8 bars
   let _part = null, _playRaf = 0;
 
   function loadRoll() { try { return JSON.parse(localStorage.getItem('djc-roll') || 'null'); } catch (_) { return null; } }
   function saveRoll() { try { localStorage.setItem('djc-roll', JSON.stringify(_roll)); } catch (_) {} }
   function restoreRoll() {
     const s = loadRoll();
-    if (s && Array.isArray(s.notes)) _roll = { bpm: s.bpm || 120, loopBeats: s.loopBeats || 8, _noteSeq: s._noteSeq || s.notes.length, notes: s.notes };
+    if (s && Array.isArray(s.notes)) _roll = { bpm: s.bpm || 120, loopBeats: s.loopBeats || 32, _noteSeq: s._noteSeq || s.notes.length, notes: s.notes };
     document.getElementById('roll-bpm').value = _roll.bpm;
     document.getElementById('roll-bars').value = Math.max(1, Math.round(_roll.loopBeats / 4));
     renderRoll();
@@ -1990,7 +1992,7 @@ ${noteBlock}`;
     saveRoll(); rebuildPart(); renderRoll(); pushStudioState();
   }
   function setBpm(bpm) { _roll.bpm = Math.max(40, Math.min(240, +bpm || 120)); document.getElementById('roll-bpm').value = _roll.bpm; if (_toneReady) Tone.Transport.bpm.value = _roll.bpm; saveRoll(); rebuildPart(); pushStudioState(); }
-  function setLoopBars(bars) { _roll.loopBeats = Math.max(1, Math.min(16, +bars || 2)) * 4; saveRoll(); rebuildPart(); renderRoll(); pushStudioState(); }
+  function setLoopBars(bars) { _roll.loopBeats = Math.max(1, Math.min(16, +bars || 8)) * 4; saveRoll(); rebuildPart(); renderRoll(); pushStudioState(); }
 
   function rebuildPart() {
     if (!_toneReady) return;
@@ -2174,7 +2176,7 @@ ${noteBlock}`;
     const sr = snap.roll || {};
     _roll = {
       bpm: sr.bpm || 120,
-      loopBeats: sr.loopBeats || 8,
+      loopBeats: sr.loopBeats || 32,
       _noteSeq: sr._noteSeq || (Array.isArray(sr.notes) ? sr.notes.length : 0),
       notes: Array.isArray(sr.notes) ? sr.notes.map(n => ({ ...n })) : [],
     };
