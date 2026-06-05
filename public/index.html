@@ -18,30 +18,26 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      /* ── Windows 95 default (gray) system palette ── */
-      --w-desktop: #008080;   /* classic teal desktop */
-      --w-face:    #c0c0c0;   /* silver button/window face */
-      --w-light:   #dfdfdf;   /* inner bevel highlight */
-      --w-hilite:  #ffffff;   /* outer bevel highlight */
-      --w-shadow:  #808080;   /* inner bevel shadow */
-      --w-dkshadow:#000000;   /* outer bevel shadow */
-      --w-title:   #000080;   /* active title bar navy */
-      --w-title2:  #1084d0;   /* title bar gradient end */
-      --bg:        #ffffff;   /* sunken field / canvas white */
-      --panel:     #c0c0c0;
-      --panel-2:   #c0c0c0;
-      --line:      #808080;
-      --line-2:    #ffffff;
-      --teal:      #000080;   /* accent → navy */
-      --teal-dim:  #808080;
-      --pink:      #000080;   /* studio accent → navy (monochrome) */
-      --text:      #000000;   /* black text on gray */
-      --muted:     #404040;   /* dark gray text */
-      --dim:       #808080;
-      --yellow:    #000080;   /* highlights → navy */
-      --green:     #008000;   /* status ok */
-      --red:       #800000;   /* status / stop maroon */
-      --gray:      #c0c0c0;
+      /* ── Modern minimalist dark palette · single teal accent ── */
+      --bg:        #0b0d12;   /* app canvas / sunken input field */
+      --panel:     #14171f;   /* window & panel face */
+      --panel-2:   #1a1e29;   /* raised surface (chips, buttons, tiles) */
+      --panel-3:   #232836;   /* hover surface */
+      --line:      rgba(255,255,255,0.07);   /* hairline divider */
+      --line-2:    rgba(255,255,255,0.13);   /* stronger border */
+      --teal:      #2fe3c5;   /* hero accent */
+      --teal-dim:  rgba(47,227,197,0.45);
+      --teal-soft: rgba(47,227,197,0.12);
+      --pink:      #e87bc8;   /* studio accent */
+      --text:      #e9ebf1;
+      --muted:     #98a0af;
+      --dim:       #5c636f;
+      --yellow:    #f5b942;
+      --green:     #35d6a4;
+      --red:       #f87171;
+      --gray:      #c7ccd6;
+      --radius:    12px;
+      --radius-sm: 8px;
     }
 
     html { background: var(--bg); }
@@ -498,243 +494,78 @@
     .hidden { display: none !important; }
 
     /* ══════════════════════════════════════════════════════════════════
-       Windows 95 (default gray) re-skin
-       Teal desktop · silver 3D-beveled windows · navy title bars · MS Sans
-       Bevels: raised = hilite TL / shadow BR ; sunken = inverse
+       Modern minimalist refinements
+       Flat surfaces · hairline borders · restrained accent · soft motion
        ══════════════════════════════════════════════════════════════════ */
 
-    *, *::before, *::after {
-      font-family: 'Tahoma', 'MS Sans Serif', 'Segoe UI', Geneva, Verdana, sans-serif !important;
-      border-radius: 0 !important;
-      text-shadow: none !important;
-    }
-    /* code / expression fields stay monospace */
-    .mono, .tc-args, #expr-input, .st-in.mono, #ped-expr, #tool-log, #event-log,
-    .tc-name, .seq-tile .se { font-family: 'Lucida Console', 'Courier New', monospace !important; }
-
-    /* Teal Win95 desktop — hide the ocean */
-    #water-bg, .water-veil { display: none !important; }
-    html { background: var(--w-desktop); }
-    body { background: var(--w-desktop); color: var(--text); font-size: 13px; }
-
-    ::selection { background: var(--w-title); color: #fff; }
-    *:focus-visible { outline: 1px dotted #000 !important; outline-offset: -4px; }
-
-    /* ── Raised toolbar/panel bevel helper applied to chrome ── */
-    header, #deck, #status-bar, .video-controls, #mic-meter, .st-header,
-    .st-editor, #pad-editor, .st-note {
-      background: var(--w-face) !important;
-      border: 1px solid var(--w-face) !important;
-      border-top-color: var(--w-hilite) !important;
-      border-left-color: var(--w-hilite) !important;
-      border-bottom-color: var(--w-dkshadow) !important;
-      border-right-color: var(--w-dkshadow) !important;
-      box-shadow: inset 1px 1px 0 var(--w-light), inset -1px -1px 0 var(--w-shadow) !important;
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      letter-spacing: -0.01em;
     }
 
-    /* ── Header → gray toolbar ── */
-    header { height: 40px; }
-    .header-left { gap: 8px; }
+    /* Calmer ambient backdrop — let the ocean read as a faint dark wash */
+    .water-veil {
+      background:
+        radial-gradient(ellipse at 50% 0%, rgba(47,227,197,0.05) 0%, transparent 55%),
+        linear-gradient(180deg, rgba(8,10,14,0.55) 0%, rgba(8,10,14,0.82) 100%);
+    }
+
+    /* Flat chrome — drop the navy gradients for clean neutral surfaces */
+    header { background: rgba(13,15,20,0.85); backdrop-filter: blur(14px); height: 52px; }
+    #deck { background: rgba(13,15,20,0.92); backdrop-filter: blur(14px); }
+    #studio { background: var(--bg); }
+    .st-header { background: var(--panel); }
+    .tc-header, #event-console .tc-header, #ctx-console .tc-header { background: var(--panel); }
+
+    /* Soften the logo glow into a subtle tint */
     .logo {
-      width: 24px; height: 24px; background: var(--w-face) !important; color: #000 !important;
-      border: 1px solid; border-color: #fff #000 #000 #fff !important;
-      box-shadow: inset 1px 1px 0 var(--w-light), inset -1px -1px 0 var(--w-shadow) !important;
+      background: var(--teal-soft); border: 1px solid var(--teal-dim);
+      box-shadow: none; border-radius: 9px;
     }
-    header h1 { color: #000 !important; font-weight: 700 !important; letter-spacing: 0 !important; }
-    header h1 span { color: var(--w-title) !important; }
-    #header-status { color: #000 !important; }
+    header h1 { font-weight: 650; letter-spacing: -0.02em; }
 
-    /* ── Windows: outer raised frame (setup card + floating panels) ── */
-    .setup-card, #video-panel, #tool-console, #event-console, #studio {
-      background: var(--w-face) !important;
-      border: 2px solid var(--w-face) !important;
-      border-top-color: var(--w-hilite) !important;
-      border-left-color: var(--w-hilite) !important;
-      border-bottom-color: var(--w-dkshadow) !important;
-      border-right-color: var(--w-dkshadow) !important;
-      box-shadow: inset 1px 1px 0 var(--w-light), inset -1px -1px 0 var(--w-shadow) !important;
+    /* Surfaces: flatter shadows, hairline borders */
+    .setup-card { box-shadow: 0 24px 70px rgba(0,0,0,0.55); border-color: var(--line); }
+    #video-panel, #tool-console, #event-console, #ctx-console {
+      box-shadow: 0 16px 48px rgba(0,0,0,0.5); border-color: var(--line);
+      background: rgba(17,20,27,0.97);
     }
 
-    /* ── Title bars (navy gradient, white bold text) ── */
-    .setup-card h2, .tc-header, .st-header {
-      background: linear-gradient(90deg, var(--w-title), var(--w-title2)) !important;
-      color: #fff !important; border: none !important; box-shadow: none !important;
-      font-weight: 700 !important; letter-spacing: 0 !important; text-transform: none !important;
+    /* Neutral dark buttons & fields (replacing scattered navy) */
+    .ctrl-btn, .deck-btn, .deck-select, .device-row select {
+      background: var(--panel-2);
     }
-    .setup-card h2 {
-      margin: 0 0 14px !important; padding: 4px 8px !important; font-size: 15px !important;
+    .ctrl-btn:hover, .deck-btn:hover { background: var(--panel-3); }
+
+    /* Accent buttons: solid, flat, no gradient */
+    .btn-primary, .deck-btn.go {
+      background: var(--teal); color: #04231e;
+      box-shadow: 0 4px 18px rgba(47,227,197,0.18);
     }
-    .setup-card { padding: 4px 4px 18px !important; }
-    .setup-card > :not(h2) { margin-left: 14px; margin-right: 14px; }
-    .tc-header, .st-header { padding: 3px 4px 3px 8px !important; }
-    .tc-title { color: #fff !important; font-weight: 700 !important; text-transform: none !important; letter-spacing: 0 !important; }
-    .st-title { color: #fff !important; text-transform: none !important; letter-spacing: 0 !important; }
-    .tc-dot, .st-dot, #event-console .tc-dot { display: none !important; }
+    .btn-primary:hover:not(:disabled), .deck-btn.go:hover { background: #45ecd0; filter: none; }
+    .btn-primary:disabled { background: var(--panel-2); color: var(--dim); box-shadow: none; }
 
-    /* ── Setup body ── */
-    #setup { background: transparent; }
-    .setup-card p.sub { color: #000 !important; }
-    .field label { color: #000 !important; text-transform: none !important; letter-spacing: 0 !important; font-weight: 400 !important; }
-    .field label .opt { color: var(--w-shadow) !important; }
+    /* Chips: pill, quiet until active */
+    .chip { background: transparent; }
+    .chip.active { background: var(--teal); color: #04231e; }
 
-    /* ── Sunken white fields (inputs, code, logs, roll, mic-meter, seq) ── */
-    .field input, #expr-input, .st-in, #seq-dur, #roll-wrap, #tool-log, #event-log,
-    .seq-steps, #mic-meter, .tc-count, .sb-item.sunken, .device-row select {
-      background: #fff !important;
-      border: 1px solid !important;
-      border-color: var(--w-shadow) var(--w-hilite) var(--w-hilite) var(--w-shadow) !important;
-      box-shadow: inset 1px 1px 0 var(--w-dkshadow), inset -1px -1px 0 var(--w-light) !important;
-      color: #000 !important;
+    /* Inputs: focus ring uses the accent softly */
+    .field input:focus, #expr-input:focus, .st-in:focus {
+      border-color: var(--teal-dim); box-shadow: 0 0 0 3px var(--teal-soft);
     }
-    .field input:focus, #expr-input:focus, .st-in:focus { color: #000 !important; }
-    #mic-meter { box-shadow: inset 1px 1px 0 var(--w-dkshadow), inset -1px -1px 0 var(--w-light) !important; }
 
-    /* ── Buttons: raised gray, press = sunken ── */
-    .btn-primary, .btn-ghost, .tc-btn, .ctrl-btn, .deck-btn, .deck-select, .st-oct,
-    .chip, .pad, .deck-btn.go, .deck-btn.stop, .ctrl-btn.end, .ctrl-btn.muted, .st-oct {
-      background: var(--w-face) !important; color: #000 !important;
-      border: 1px solid !important;
-      border-color: var(--w-hilite) var(--w-dkshadow) var(--w-dkshadow) var(--w-hilite) !important;
-      box-shadow: inset 1px 1px 0 var(--w-light), inset -1px -1px 0 var(--w-shadow) !important;
-      text-transform: none !important; letter-spacing: 0 !important; filter: none !important;
-    }
-    .btn-primary { font-weight: 700 !important; font-size: 13px !important; padding: 7px !important; }
-    .btn-primary:hover:not(:disabled), .btn-ghost:hover, .tc-btn:hover, .ctrl-btn:hover,
-    .deck-btn:hover, .chip:hover, .pad:hover, .st-oct:hover { background: var(--w-face) !important; color: #000 !important; }
-    .btn-primary:active:not(:disabled), .btn-ghost:active, .tc-btn:active, .ctrl-btn:active,
-    .deck-btn:active, .chip:active, .pad:active {
-      border-color: var(--w-dkshadow) var(--w-hilite) var(--w-hilite) var(--w-dkshadow) !important;
-      box-shadow: inset 1px 1px 0 var(--w-shadow) !important;
-    }
-    .btn-primary:disabled { background: var(--w-face) !important; color: var(--w-shadow) !important; }
-    /* keep a hint of semantics via text color */
-    .deck-btn.go { color: #006000 !important; font-weight: 700 !important; }
-    .deck-btn.stop, .ctrl-btn.end, .ctrl-btn.muted { color: var(--red) !important; font-weight: 700 !important; }
-    .deck-select { color: #000 !important; }
+    /* Status bar: flat */
+    #status-bar { background: rgba(13,15,20,0.85); backdrop-filter: blur(14px); }
 
-    /* selected / active toggle states → pressed-in look */
-    .chip.active, .deck-btn.toggle.active, #ev-follow.active {
-      border-color: var(--w-dkshadow) var(--w-hilite) var(--w-hilite) var(--w-dkshadow) !important;
-      box-shadow: inset 1px 1px 0 var(--w-shadow) !important;
-      background: #c0c0c0 !important; color: #000 !important; font-weight: 700 !important;
-    }
-    .chip.saved { color: var(--w-title) !important; }
-    .chip.saved .x:hover, .chip.saved:hover { color: var(--red) !important; }
+    /* ── Minimal scrollbars ── */
+    * { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.16) transparent; }
+    *::-webkit-scrollbar { width: 10px; height: 10px; }
+    *::-webkit-scrollbar-track { background: transparent; }
+    *::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.14); border-radius: 999px; border: 2px solid transparent; background-clip: content-box; }
+    *::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.26); background-clip: content-box; }
+    *::-webkit-scrollbar-corner { background: transparent; }
 
-    /* ── Deck / status bar ── */
-    #deck { gap: 8px; }
-    #vol { accent-color: var(--w-title); }
-    #vol-wrap span, .preset-row .lbl, .seq-row .lbl, .sb-item { color: #000 !important; text-transform: none !important; letter-spacing: 0 !important; }
-    .preset-row .lbl, .seq-row .lbl { font-weight: 700; }
-    #status-bar { gap: 10px; }
-    .sb-item { padding: 1px 8px; box-shadow: inset 1px 1px 0 var(--w-shadow), inset -1px -1px 0 var(--w-hilite) !important; }
-    .sb-item .val, .sb-item .hl { color: #000 !important; }
-    .status-dot { box-shadow: none !important; border: 1px solid var(--w-shadow); }
-    .status-dot.active { background: var(--green) !important; }
-    .status-dot.loading { background: #c0a000 !important; }
-    .status-dot.error { background: var(--red) !important; }
-
-    /* ── Video panel ── */
-    #replica-video-container { border-bottom: 1px solid var(--w-shadow); background: #000 !important; }
-    .avatar-ring { background: var(--w-face) !important; border: 1px solid var(--w-shadow); color: #000; }
-    #replica-placeholder span { color: #000 !important; }
-    .mic-bar { background: var(--w-title) !important; }
-    #mic-meter.muted .mic-bar { background: var(--w-shadow) !important; }
-
-    /* ── Consoles ── */
-    .tc-count { color: #000 !important; font-weight: 700; }
-    .tc-name { color: var(--w-title) !important; }
-    .tc-args .k { color: var(--w-shadow) !important; }
-    .tc-args .v { color: #000 !important; }
-    .tc-empty { color: var(--w-shadow) !important; }
-    .ev-detail { color: #000 !important; }
-    .ev-type {
-      background: var(--w-face) !important; color: #000 !important;
-      border: 1px solid !important;
-      border-color: var(--w-hilite) var(--w-dkshadow) var(--w-dkshadow) var(--w-hilite) !important;
-      box-shadow: inset 1px 1px 0 var(--w-light), inset -1px -1px 0 var(--w-shadow) !important;
-    }
-    .ev-type.replica, .ev-type.user, .ev-type.tool, .ev-type.perception,
-    .ev-type.sent, .ev-type.system { color: #000 !important; }
-
-    /* ── Studio ── */
-    #st-status { color: #fff !important; }
-    #st-status.live { color: #aef0ae !important; }
-    .st-sec-h { color: #000 !important; letter-spacing: 0 !important; font-weight: 700; }
-    .st-hint { color: var(--w-shadow) !important; }
-    .st-hint b { color: var(--w-title) !important; }
-    .st-note { color: #000 !important; }
-    .st-note b { color: var(--w-title) !important; }
-
-    /* Pads → raised gray buttons; selected/empty = sunken */
-    .pad { color: #000 !important; font-weight: 700; text-transform: none !important; }
-    .pad.empty {
-      color: var(--w-shadow) !important; font-weight: 400 !important;
-      border-color: var(--w-shadow) var(--w-hilite) var(--w-hilite) var(--w-shadow) !important;
-      box-shadow: inset 1px 1px 0 var(--w-dkshadow), inset -1px -1px 0 var(--w-light) !important;
-    }
-    .pad.sel {
-      border-color: var(--w-dkshadow) var(--w-hilite) var(--w-hilite) var(--w-dkshadow) !important;
-      box-shadow: inset 1px 1px 0 var(--w-shadow) !important;
-      color: var(--w-title) !important; outline: 1px dotted #000; outline-offset: -4px;
-    }
-    .pad.hit { background: var(--w-title) !important; color: #fff !important; }
-    .pad .pad-kind { color: var(--w-shadow) !important; }
-    .pad.sel .pad-kind { color: var(--w-title) !important; }
-    .pad .pad-num { color: var(--w-shadow) !important; }
-
-    /* Keyboard */
-    .key { background: #fff !important; border: 1px solid #000 !important; }
-    .key.black > i { background: #000 !important; border: 1px solid #000 !important; }
-    .key.down { background: var(--w-title) !important; }
-    .key.black.down > i { background: var(--w-title) !important; }
-    .key .key-lbl { color: var(--w-shadow) !important; }
-
-    /* Piano-roll */
-    .roll-note { background: var(--w-title) !important; box-shadow: inset 1px 1px 0 #4060c0, inset -1px -1px 0 #000 !important; }
-    .roll-note.sel { outline: 1px dotted #fff !important; }
-    .roll-beat.bar { background: rgba(0,0,128,0.35) !important; }
-    #roll-playhead { background: var(--red) !important; box-shadow: none !important; }
-
-    /* Sequencer tiles → raised tiles */
-    .seq-tile {
-      background: var(--w-face) !important;
-      border: 1px solid !important;
-      border-color: var(--w-hilite) var(--w-dkshadow) var(--w-dkshadow) var(--w-hilite) !important;
-      box-shadow: inset 1px 1px 0 var(--w-light), inset -1px -1px 0 var(--w-shadow) !important;
-    }
-    .seq-tile.active { outline: 1px dotted #000; outline-offset: -3px; box-shadow: inset 1px 1px 0 var(--w-light), inset -1px -1px 0 var(--w-shadow) !important; }
-    .seq-tile .se { color: var(--w-title) !important; }
-    .seq-tile .sd { color: var(--w-shadow) !important; }
-    .seq-empty { color: var(--w-shadow) !important; }
-
-    /* Speaking / thinking badges → gray beveled tags */
-    .speak-badge, .think-badge {
-      background: var(--w-face) !important; color: #000 !important; backdrop-filter: none !important;
-      border: 1px solid !important;
-      border-color: var(--w-hilite) var(--w-dkshadow) var(--w-dkshadow) var(--w-hilite) !important;
-      box-shadow: inset 1px 1px 0 var(--w-light), inset -1px -1px 0 var(--w-shadow) !important;
-      text-transform: none !important;
-    }
-    #replica-video-container.speaking { box-shadow: inset 0 0 0 2px var(--w-title) !important; }
-    #replica-video-container.speaking::after { box-shadow: none !important; animation: none !important; }
-    #replica-video-container.thinking { box-shadow: inset 0 0 0 2px var(--red) !important; }
-    #user-talk-tag { background: var(--w-face) !important; color: var(--w-title) !important; }
-    #mic-meter.talking { background: #fff !important; }
-
-    /* Setup status message */
-    #setup-msg.err { background: #fff !important; border: 1px solid var(--red) !important; color: var(--red) !important; box-shadow: inset 1px 1px 0 var(--w-dkshadow) !important; }
-    #setup-msg.ok  { background: #fff !important; border: 1px solid var(--green) !important; color: var(--green) !important; box-shadow: inset 1px 1px 0 var(--w-dkshadow) !important; }
-
-    /* ── Win95 beveled scrollbars ── */
-    *::-webkit-scrollbar { width: 16px; height: 16px; }
-    *::-webkit-scrollbar-track { background: #dfdfdf; box-shadow: inset 1px 1px 0 var(--w-shadow); }
-    *::-webkit-scrollbar-thumb {
-      background: var(--w-face);
-      border: 1px solid; border-color: var(--w-hilite) var(--w-dkshadow) var(--w-dkshadow) var(--w-hilite);
-      box-shadow: inset 1px 1px 0 var(--w-light), inset -1px -1px 0 var(--w-shadow);
-    }
-    *::-webkit-scrollbar-corner { background: var(--w-face); }
   </style>
 </head>
 <body>
