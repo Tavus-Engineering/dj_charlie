@@ -1027,11 +1027,19 @@
     }
 
     switch (et) {
-      case 'conversation.replica.started_thinking':
+      case 'conversation.replica.started_thinking': {
         _toolThisTurn = false;  // new turn — back to the generous "waiting for tools" window
         setReplicaThinking(true);
-        sendThinkingFiller();   // CVI binds the bridge text to the running inference
+        // One filler per turn: started_thinking can fire more than once inside a
+        // single turn_idx, and a second bridge utterance would talk over Charlie.
+        // Only echo when this message's turn_idx differs from the last we echoed.
+        const turnIdx = p.turn_idx ?? data.turn_idx ?? null;
+        if (turnIdx == null || turnIdx !== _lastFillerTurn) {
+          _lastFillerTurn = turnIdx;
+          sendThinkingFiller();   // CVI binds the bridge text to the running inference
+        }
         return;
+      }
       case 'conversation.replica.stopped_thinking':
         setReplicaThinking(false);
         bumpWorking('bridge');  // thinking's done — bridge until tools land (or it times out)
@@ -1134,6 +1142,7 @@
     refreshTalkStatus();
   }
   let _workClearT = 0, _toolThisTurn = false;
+  let _lastFillerTurn = null;  // turn_idx of the last turn we sent a thinking filler (echo) for
   // Relight "working" and re-arm the quiet timer. kind 'tool' marks that tools are
   // now flowing, so we switch to the short settle window; anything else keeps the
   // generous bridge window (we're still waiting on the first tool).
@@ -1162,11 +1171,12 @@
     document.getElementById('st-persona-note')?.classList.add('hidden');
     // Charlie is acting — keep the "working" badge lit through this burst of calls.
     bumpWorking('tool');
-    // NOTE: success confirmations are intentionally NOT sent back via tellCharlie.
-    // Each append used to provoke another inference round, forcing Charlie to act
-    // one tool at a time. The coalesced overwrite from pushStudioState() (which
-    // lists every pad + note id) is the authoritative feedback, so Charlie can
-    // fire define_pads + create_notes + play_timeline together in a single turn.
+    // We confirm the burst back to Charlie via append_llm_context, but COALESCED
+    // into ONE append per turn (see confirmToolCalls below). A per-tool append
+    // provokes a fresh inference each time, forcing Charlie to act one tool at a
+    // time; one coalesced append lets him fire define_pads + create_notes +
+    // play_timeline together in a single turn. pushStudioState()'s overwrite (every
+    // pad + note id) stays the authoritative state — this just closes the tool loop.
     if (name === 'define_pad') {
       const pad = definePad(args); toggleStudio(true);
       lastTool(`define_pad(${pad.id}:${pad.label})`);
@@ -1223,6 +1233,10 @@
       stopTimeline();
       lastTool('stop_timeline()');
     }
+    else { return; }   // unrecognized tool — nothing to confirm
+    // Close the tool loop: ONE coalesced append per turn (not per call), so several
+    // tools can still land in a single turn.
+    confirmToolCalls(name);
   }
 
   // Mirror of what we feed Charlie's LLM, for the Context inspector:
@@ -1245,6 +1259,21 @@
     }, '*');
     recordAppend(text);
     logEvent('sent: append_llm_context', text, 'sent');
+  }
+
+  // Confirm executed tool calls back to Charlie via append_llm_context — the Tavus
+  // "tool result" channel — COALESCED into one append per turn. Per-tool appends
+  // each trigger a fresh inference, forcing one-tool-at-a-time; batching the burst
+  // keeps multi-tool turns intact. pushStudioState() carries the authoritative state.
+  let _confirmT = 0, _confirmTools = [];
+  function confirmToolCalls(name) {
+    _confirmTools.push(name);
+    clearTimeout(_confirmT);   // coalesce a burst (define_pads + create_notes + play_timeline) into one append
+    _confirmT = setTimeout(() => {
+      const tools = _confirmTools.join(', ');
+      _confirmTools = [];
+      tellCharlie(`Executed tool calls this turn: ${tools}. The live Studio state reflects the result — don't re-issue these.`);
+    }, 250);
   }
 
   // ── Live Studio state → Charlie ───────────────────────────────────────────
