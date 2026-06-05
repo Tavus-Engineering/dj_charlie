@@ -11,6 +11,6 @@
     "deploy": "wrangler pages deploy"
   },
   "devDependencies": {
-    "wrangler": "^3"
+    "wrangler": "^4"
   }
 }
