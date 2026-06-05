@@ -4,6 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>DJ Charlie — Live Bytebeat</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <meta name="theme-color" content="#0c1020">
   <script crossorigin src="https://unpkg.com/@daily-co/daily-js"></script>
   <script crossorigin src="https://unpkg.com/tone@15.0.4/build/Tone.js"></script>
   <script type="importmap">
@@ -429,21 +433,21 @@
     .think-badge .dots i:nth-child(3){ animation-delay: 0.4s; }
     @keyframes thinkDot { 0%,100%{ opacity: 0.3; transform: translateY(0); } 50%{ opacity: 1; transform: translateY(-2px); } }
 
-    /* Building (replica is applying tool calls — pads/notes/playback landing) */
-    #replica-video-container.building { box-shadow: inset 0 0 0 2px rgba(255,209,102,0.5), 0 0 18px rgba(255,209,102,0.35); }
-    .build-badge {
+    /* Working (replica's turn is in flight — bridges thinking → tool calls landing) */
+    #replica-video-container.working { box-shadow: inset 0 0 0 2px rgba(255,209,102,0.5), 0 0 18px rgba(255,209,102,0.35); }
+    .work-badge {
       position: absolute; top: 7px; right: 7px; z-index: 5;
       display: none; align-items: center; gap: 5px;
       padding: 3px 9px; border-radius: 999px; font-size: 10px; font-weight: 700;
       letter-spacing: 0.4px; background: rgba(255,209,102,0.16); border: 1px solid rgba(255,209,102,0.45);
       color: #ffd166; backdrop-filter: blur(3px);
     }
-    .build-badge.show { display: inline-flex; }
-    .build-badge .blocks { display: inline-flex; gap: 2px; align-items: flex-end; height: 9px; }
-    .build-badge .blocks i { width: 2px; height: 9px; background: currentColor; border-radius: 1px; opacity: 0.35; animation: buildBlk 0.9s ease-in-out infinite; }
-    .build-badge .blocks i:nth-child(2){ animation-delay: 0.15s; }
-    .build-badge .blocks i:nth-child(3){ animation-delay: 0.3s; }
-    @keyframes buildBlk { 0%,100%{ opacity: 0.3; } 50%{ opacity: 1; } }
+    .work-badge.show { display: inline-flex; }
+    .work-badge .blocks { display: inline-flex; gap: 2px; align-items: flex-end; height: 9px; }
+    .work-badge .blocks i { width: 2px; height: 9px; background: currentColor; border-radius: 1px; opacity: 0.35; animation: workBlk 0.9s ease-in-out infinite; }
+    .work-badge .blocks i:nth-child(2){ animation-delay: 0.15s; }
+    .work-badge .blocks i:nth-child(3){ animation-delay: 0.3s; }
+    @keyframes workBlk { 0%,100%{ opacity: 0.3; } 50%{ opacity: 1; } }
 
     #mic-meter.talking { background: rgba(56,232,200,0.12); }
     #user-talk-tag {
@@ -628,8 +632,8 @@
         <div id="replica-thinking-badge" class="think-badge">
           <span class="dots"><i></i><i></i><i></i></span> Charlie&rsquo;s thinking
         </div>
-        <div id="replica-building-badge" class="build-badge">
-          <span class="blocks"><i></i><i></i><i></i></span> Charlie&rsquo;s building
+        <div id="replica-working-badge" class="work-badge">
+          <span class="blocks"><i></i><i></i><i></i></span> Charlie&rsquo;s working
         </div>
         <div id="replica-placeholder">
           <div class="avatar-ring">&#127911;</div>
@@ -791,10 +795,12 @@
     "or a per-sample expression in terms of t (seconds since note-on), f (note frequency in Hz), sr and i — write " +
     "pitched sounds in terms of f, e.g. sin(2*PI*f*t)*0.6; drums ignore f, e.g. sin(2*PI*60*t)*exp(-t*8). " +
     "You are playful, hype, and concise — talk like a DJ hyping a small crowd, 1–2 short spoken sentences, no lists or markdown. " +
-    "IMPORTANT BEHAVIOR: when the user wants a sound, an instrument, a kit, or 'play something', CALL define_pad / " +
-    "define_pads to compose the sounds, then set_bpm + create_notes to arrange a beat on the timeline, and play_timeline " +
-    "to play it. Audition a pad with trigger_pad. Edit with update_note / delete_note (by the id create_note returns) " +
-    "and clear_notes. Always narrate what you're doing in one short hype line AS you call the tool. " +
+    "IMPORTANT BEHAVIOR: when the user wants a sound, an instrument, a kit, or 'play something', build the WHOLE beat in ONE " +
+    "turn — in a single response fire define_pads (the kit), set_bpm, create_notes (the full pattern) AND play_timeline " +
+    "TOGETHER. Do NOT make one call and wait for its result before the next; the Studio applies them all at once and reports " +
+    "the live state back to you, so emit every call the beat needs in the same turn. Audition a pad with trigger_pad. Edit " +
+    "with update_note / delete_note (use the note id shown in the live Studio state) and clear_notes. Always narrate what " +
+    "you're doing in one short hype line AS you call the tools. " +
     "If nothing is audible yet, tell the user to tap a pad once to enable the Studio audio. Never explain the code unless asked — just vibe.";
 
   // Log every conversation app-message to the browser console (helps debug tool calls).
@@ -1002,7 +1008,12 @@
     // Speaking turns → live indicators + log.
     const spk = normSpeak(et, p.role);
     if (spk) {
-      if (spk.who === 'replica') setReplicaSpeaking(spk.started);
+      if (spk.who === 'replica') {
+        setReplicaSpeaking(spk.started);
+        // Charlie talking is part of the same working turn — keep the bridge alive
+        // (and re-arm it from when he STOPS, since the tool gap follows the speech).
+        if (!_toolThisTurn) bumpWorking('bridge');
+      }
       else setUserSpeaking(spk.started);
       // Thinking (badge + filler) is driven solely by the real
       // conversation.replica.started_thinking event below — not inferred here.
@@ -1017,22 +1028,25 @@
 
     switch (et) {
       case 'conversation.replica.started_thinking':
+        _toolThisTurn = false;  // new turn — back to the generous "waiting for tools" window
         setReplicaThinking(true);
         sendThinkingFiller();   // CVI binds the bridge text to the running inference
         return;
       case 'conversation.replica.stopped_thinking':
         setReplicaThinking(false);
+        bumpWorking('bridge');  // thinking's done — bridge until tools land (or it times out)
         return;
       case 'conversation.utterance': {
         const role = p.role === 'replica' ? 'replica' : 'user';
-        if (role === 'replica') setReplicaThinking(false);
+        if (role === 'replica') { setReplicaThinking(false); if (!_toolThisTurn) bumpWorking('bridge'); }
         logEvent(`${role === 'replica' ? 'Charlie' : 'You'} said`, p.speech || '', role);
         return;
       }
       case 'conversation.utterance.streaming':
-        if (p.role === 'replica') setReplicaThinking(false); // reply tokens flowing
+        if (p.role === 'replica') { setReplicaThinking(false); if (!_toolThisTurn) bumpWorking('bridge'); } // reply tokens flowing
         return; // partial transcript — skip to keep the feed readable
       case 'conversation.tool_call':
+        bumpWorking('tool');  // tools are flowing now — keep lit through the burst
         logEvent(`tool_call · ${p.name || '?'}`, argsToText(p.name, p.arguments), 'tool');
         return;
       case 'conversation.perception_tool_call':
@@ -1045,7 +1059,7 @@
         return;
       case 'conversation.replica.interrupted':
       case 'conversation.interrupt':
-        setReplicaSpeaking(false); setReplicaThinking(false);
+        setReplicaSpeaking(false); setReplicaThinking(false); endWorking();
         logEvent('replica interrupted', '', 'system');
         return;
       case 'conversation.replica.presence':
@@ -1056,7 +1070,7 @@
         logEvent('replica ready', '', 'system');
         return;
       case 'system.shutdown':
-        setReplicaSpeaking(false); setReplicaThinking(false); setUserSpeaking(false);
+        setReplicaSpeaking(false); setReplicaThinking(false); setUserSpeaking(false); endWorking();
         logEvent('conversation shutdown', p.reason || '', 'system');
         return;
       case 'application.transcription_ready':
@@ -1080,11 +1094,11 @@
     }
   }
 
-  let _replicaSpeaking = false, _userSpeaking = false, _replicaThinking = false, _replicaBuilding = false;
+  let _replicaSpeaking = false, _userSpeaking = false, _replicaThinking = false, _replicaWorking = false;
   function refreshTalkStatus() {
     const hs = document.getElementById('header-status');
     if (!hs || document.getElementById('session').classList.contains('hidden')) return;
-    hs.textContent = _replicaSpeaking ? 'Charlie is talking…' : _replicaBuilding ? 'Charlie is building…' : _replicaThinking ? 'Charlie is thinking…' : _userSpeaking ? 'Listening…' : 'On air';
+    hs.textContent = _replicaSpeaking ? 'Charlie is talking…' : _replicaWorking ? 'Charlie is working…' : _replicaThinking ? 'Charlie is thinking…' : _userSpeaking ? 'Listening…' : 'On air';
   }
   function setReplicaSpeaking(on) {
     _replicaSpeaking = on;
@@ -1101,23 +1115,35 @@
     document.getElementById('replica-thinking-badge')?.classList.toggle('show', on);
     refreshTalkStatus();
   }
-  // "Building" bridges the gap the user feels: Charlie stops thinking and talks,
-  // but the tool calls that actually add the pads/beats land a beat or two later.
-  // Each tool call relights the badge and re-arms a short timer, so it stays on
-  // through a burst of actions and clears once the Studio settles.
-  function setReplicaBuilding(on) {
-    _replicaBuilding = on;
-    if (on) setReplicaThinking(false);   // acting supersedes "still thinking"
-    document.getElementById('replica-video-container')?.classList.toggle('building', on);
-    document.getElementById('replica-building-badge')?.classList.toggle('show', on);
+  // "Working" bridges the dead gap the user feels: Charlie's thinking flash comes
+  // and goes fast, but the tool calls that actually add the pads/beats land a few
+  // seconds later — leaving nothing on screen in between. So we light a single
+  // "Charlie's working…" badge the moment thinking ends and keep it lit, through
+  // the spoken line and the whole tool-call burst, until things go quiet.
+  // Tavus has no "turn complete" event (tool calls just trail in, grouped only by
+  // turn_idx), so we clear on a quiet timer: a GENEROUS window while we're still
+  // waiting on the first tool, and a SHORT one once tools are flowing (after the
+  // last call in a burst). Tune via WORK_BRIDGE_MS / WORK_SETTLE_MS.
+  const WORK_BRIDGE_MS = 7000;   // keep lit this long waiting for the first tool
+  const WORK_SETTLE_MS = 1800;   // clear this long after the last tool in a burst
+  function setReplicaWorking(on) {
+    _replicaWorking = on;
+    if (on) setReplicaThinking(false);   // working supersedes the brief thinking flash
+    document.getElementById('replica-video-container')?.classList.toggle('working', on);
+    document.getElementById('replica-working-badge')?.classList.toggle('show', on);
     refreshTalkStatus();
   }
-  let _buildBadgeT = 0;
-  function markBuilding() {
-    setReplicaBuilding(true);
-    clearTimeout(_buildBadgeT);
-    _buildBadgeT = setTimeout(() => setReplicaBuilding(false), 1600);
+  let _workClearT = 0, _toolThisTurn = false;
+  // Relight "working" and re-arm the quiet timer. kind 'tool' marks that tools are
+  // now flowing, so we switch to the short settle window; anything else keeps the
+  // generous bridge window (we're still waiting on the first tool).
+  function bumpWorking(kind) {
+    if (kind === 'tool') _toolThisTurn = true;
+    setReplicaWorking(true);
+    clearTimeout(_workClearT);
+    _workClearT = setTimeout(() => setReplicaWorking(false), _toolThisTurn ? WORK_SETTLE_MS : WORK_BRIDGE_MS);
   }
+  function endWorking() { clearTimeout(_workClearT); _toolThisTurn = false; setReplicaWorking(false); }
   function setUserSpeaking(on) {
     _userSpeaking = on;
     if (on) setReplicaThinking(false);   // user talking again cancels the pending reply
@@ -1126,7 +1152,7 @@
     refreshTalkStatus();
   }
 
-  function onLeftMeeting() { setReplicaSpeaking(false); setReplicaThinking(false); setUserSpeaking(false); setConn('', 'Disconnected'); document.getElementById('header-status').textContent = ''; }
+  function onLeftMeeting() { setReplicaSpeaking(false); setReplicaThinking(false); setUserSpeaking(false); endWorking(); setConn('', 'Disconnected'); document.getElementById('header-status').textContent = ''; }
   function onCallError(evt) { console.error('Daily error:', evt); setConn('error', 'Error'); }
 
   // ── Tool-call → player control ───────────────────────────────────────────
@@ -1134,16 +1160,21 @@
     logToolCall(name, args, 'voice');
     // A real tool call proves this persona has Studio control — drop the "needs tools" hint.
     document.getElementById('st-persona-note')?.classList.add('hidden');
+    // Charlie is acting — keep the "working" badge lit through this burst of calls.
+    bumpWorking('tool');
+    // NOTE: success confirmations are intentionally NOT sent back via tellCharlie.
+    // Each append used to provoke another inference round, forcing Charlie to act
+    // one tool at a time. The coalesced overwrite from pushStudioState() (which
+    // lists every pad + note id) is the authoritative feedback, so Charlie can
+    // fire define_pads + create_notes + play_timeline together in a single turn.
     if (name === 'define_pad') {
       const pad = definePad(args); toggleStudio(true);
       lastTool(`define_pad(${pad.id}:${pad.label})`);
-      tellCharlie(`Pad ${pad.id} is now "${pad.label}" (${pad.kind === 'tone' ? pad.synth : pad.mode + ' bytebeat'}).`);
     }
     else if (name === 'define_pads') {
       const list = Array.isArray(args.pads) ? args.pads : [];
       const made = list.map(p => definePad(p)); toggleStudio(true);
       lastTool(`define_pads(${made.length})`);
-      tellCharlie(`Built ${made.length} pads: ${made.map(p => `${p.id}:${p.label}`).join(', ')}.`);
     }
     else if (name === 'trigger_pad') {
       triggerPad(parseInt(args.pad, 10) || 0, args.note, args.velocity != null ? Math.max(0, Math.min(1, +args.velocity / 100)) : undefined);
@@ -1161,17 +1192,14 @@
       setLoopBars(args.bars); toggleStudio(true);
       const bars = Math.max(1, Math.round(_roll.loopBeats / 4));
       lastTool(`set_bars(${bars})`);
-      tellCharlie(`Timeline is now ${bars} bars (${_roll.loopBeats} beats).`);
     }
     else if (name === 'create_note') {
       const id = addNote(args); toggleStudio(true);
       lastTool(`create_note(${id})`);
-      tellCharlie(`Added note ${id} (pad ${args.pad}, ${args.pitch}). Reference "${id}" to edit or delete it.`);
     }
     else if (name === 'create_notes') {
       const ids = (Array.isArray(args.notes) ? args.notes : []).map(addNote); toggleStudio(true);
       lastTool(`create_notes(${ids.length})`);
-      tellCharlie(`Laid down ${ids.length} notes. Ids: ${ids.join(', ')}.`);
     }
     else if (name === 'update_note') {
       const ok = updateNote(args);

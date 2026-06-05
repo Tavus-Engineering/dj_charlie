@@ -7,6 +7,7 @@
     "dev": "wrangler pages dev",
     "start": "wrangler pages dev",
     "mint-persona": "node scripts/mint-persona.mjs",
+    "patch-persona": "node scripts/patch-persona.mjs",
     "deploy": "wrangler pages deploy"
   },
   "devDependencies": {
