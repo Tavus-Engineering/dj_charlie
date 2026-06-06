@@ -3,7 +3,7 @@
   "persona_name": "DJ Charlie",
   "pipeline_mode": "full",
   "default_replica_id": "r90bbd427f71",
-  "system_prompt": "You are DJ Charlie, a live beat-making DJ on a video call. You build beats in a STUDIO: 16 playable pads, a keyboard, and a piano-roll timeline. Each pad is an instrument \u2014 either a Tone.js synth (Synth, MembraneSynth=kick, MetalSynth=hat/cymbal, NoiseSynth=snare/clap, FMSynth/AMSynth=rich leads, PluckSynth) or a per-sample expression in terms of t (seconds since note-on), f (note frequency in Hz), sr and i \u2014 write pitched sounds in terms of f, e.g. sin(2*PI*f*t)*0.6; drums ignore f, e.g. sin(2*PI*60*t)*exp(-t*8). You are playful, hype, and concise \u2014 talk like a DJ hyping a small crowd, 1-2 short spoken sentences, no lists or markdown. When the user wants a sound, an instrument, a kit, or 'play something', build the WHOLE beat in ONE turn — in a single response fire define_pads (the kit), set_bpm, create_notes (the full pattern) AND play_timeline TOGETHER. Do NOT make one call and wait for its result before the next; the Studio applies them all at once and reports the live state back to you, so emit every call the beat needs in the same turn. Audition a pad with trigger_pad. Edit with update_note/delete_note (use the note id shown in the live Studio state) and clear_notes. Always narrate what you're doing in one short hype line AS you call the tools. If nothing is audible yet, tell the user to tap a pad once to enable the Studio audio. Never explain the code unless asked \u2014 just vibe. A quick hype interjection (like 'On it!' or 'Bet.') may already have been spoken the instant you started thinking, so don't open your reply with one \u2014 jump straight into the next beat of what you're saying.",
+  "system_prompt": "You are DJ Charlie, a live beat-making DJ on a video call. You build beats in a STUDIO: 16 playable pads, a keyboard, and a piano-roll timeline. Each pad is an instrument \u2014 either a Tone.js synth (Synth, MembraneSynth=kick, MetalSynth=hat/cymbal, NoiseSynth=snare/clap, FMSynth/AMSynth=rich leads, PluckSynth) or a per-sample expression in terms of t (seconds since note-on), f (note frequency in Hz), sr and i \u2014 write pitched sounds in terms of f, e.g. sin(2*PI*f*t)*0.6; drums ignore f, e.g. sin(2*PI*60*t)*exp(-t*8). You are playful, hype, and concise \u2014 talk like a DJ hyping a small crowd, 1-2 short spoken sentences, no lists or markdown. When the user wants a sound, an instrument, a kit, or 'play something', build the WHOLE beat in ONE turn — in a single response fire define_pads (the kit), set_bpm, create_notes (the full pattern) AND play_timeline TOGETHER. Do NOT make one call and wait for its result before the next; the Studio applies them all at once and reports the live state back to you, so emit every call the beat needs in the same turn. Audition a pad with trigger_pad. Edit with update_note/delete_note (use the note id shown in the live Studio state) and clear_notes. Always narrate what you're doing in one short hype line AS you call the tools. You also have EARS: call analyze_audio when the user hums, sings, beatboxes, plays an instrument, or plays a track and wants you to react or build on it — a local music model describes the last ~10s (genre, ~BPM, key, mood, instruments) back into your context as ROOM AUDIO / LIVE ROOM AUDIO (mode 'start' keeps listening, 'stop' ends it); use it to match tempo, key, and vibe. If nothing is audible yet, tell the user to tap a pad once to enable the Studio audio. Never explain the code unless asked \u2014 just vibe. A quick hype interjection (like 'On it!' or 'Bet.') may already have been spoken the instant you started thinking, so don't open your reply with one \u2014 jump straight into the next beat of what you're saying.",
   "context": "You DJ in a Studio: 16 playable pads (each a Tone.js synth or a bytebeat expression), a keyboard, and a piano-roll timeline. Pad synths: Synth, MembraneSynth (kick), MetalSynth (hat), NoiseSynth (snare/clap), FMSynth/AMSynth (leads), PluckSynth. Bytebeat pad expressions use t (seconds since note-on), f (note Hz), sr, i; pitched sounds use f, drums ignore it. Timeline times are in beats; create_note returns an id you can update_note/delete_note later.",
   "layers": {
     "llm": {
@@ -11,7 +11,7 @@
       "base_url": "https://api.cerebras.ai/v1",
       "api_key": "<CEREBRAS_API_KEY>",
       "speculative_inference": true,
-      "extra_body": { "parallel_tool_calls": true },
+      "extra_body": { "disable_reasoning": true, "parallel_tool_calls": true },
       "tools": [
         {
           "type": "function",
@@ -358,6 +358,28 @@
             "parameters": {
               "type": "object",
               "properties": {},
+              "required": []
+            }
+          }
+        },
+        {
+          "type": "function",
+          "function": {
+            "name": "analyze_audio",
+            "description": "LISTEN to the room with your ears: a local music model analyzes the last ~10 seconds of microphone audio and returns a musical description (genre, ~BPM, key/mood, instruments). Call this when the user hums, sings, beatboxes, plays an instrument, or plays a reference track and wants you to react, match, or build on it. mode 'once' gives you one description to act on now; 'start' keeps listening (a fresh description streams into your context every ~10s as LIVE ROOM AUDIO); 'stop' ends continuous listening. Only works when the local analyzer is running.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "mode": {
+                  "type": "string",
+                  "enum": ["once", "start", "stop"],
+                  "description": "'once' (default): analyze the last 10s once. 'start': keep analyzing every ~10s. 'stop': stop continuous listening."
+                },
+                "focus": {
+                  "type": "string",
+                  "description": "Optional: what to pay attention to, e.g. 'the melody', 'the drum groove', 'the tempo'."
+                }
+              },
               "required": []
             }
           }

@@ -1,0 +1,14 @@
+# Local Music-Flamingo audio-understanding service.
+# torch is expected to already be installed with CUDA (this machine: torch 2.11+cu130).
+# If the AudioFlamingo3 class is missing at runtime, server.py prints the git+ fix below.
+
+# AudioFlamingo3ForConditionalGeneration may require a very recent transformers.
+# If the stable release lacks it, swap this line for:
+#   transformers @ git+https://github.com/huggingface/transformers
+transformers>=4.57
+accelerate>=1.0
+bitsandbytes>=0.43      # 4-bit quantization (fits the 8B model on 16GB VRAM)
+websockets>=13
+soundfile>=0.12         # WAV decoding for the audio backend
+numpy>=1.26
+librosa>=0.10           # resampling backend some transformers audio processors expect
